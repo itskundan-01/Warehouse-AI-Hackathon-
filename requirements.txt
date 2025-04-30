@@ -1,0 +1,28 @@
+# Core dependencies - Cross-platform compatible
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=2.0.0
+sqlalchemy>=2.0.0
+alembic>=1.11.1
+python-dotenv>=1.0.0
+# Use psycopg2-binary instead of psycopg2 for easier cross-platform installation
+psycopg2-binary>=2.9.6
+redis>=4.6.0
+celery>=5.3.1
+
+# Security - Cross-platform compatible
+python-jose>=3.3.0
+passlib>=1.7.4
+cryptography>=41.0.1
+pydantic-settings>=2.0.1
+
+# Testing - Cross-platform compatible
+pytest>=7.3.1
+pytest-cov>=4.1.0
+httpx>=0.24.1
+
+# ML libraries - Install as needed
+# These are commented out to avoid issues during initial setup
+# opencv-python>=4.7.0
+# torch>=2.0.0  # Install with: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# ultralytics>=8.0.0  # YOLOv8

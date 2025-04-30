@@ -1,0 +1,441 @@
+AI HACKATHON: COMPUTER VISION BASED
+SMART SURVEILLANCE FOR WAREHOUSES
+ANDHRA PRADESH STATE CIVIL SUPPLIES CORPORATION
+1 BACKGROUND
+Andhra Pradesh State Civil Supplies Corporation Limited (APSCSCL) operates a vast network of
+warehouses and transportation infrastructure for the procurement, storage, and distribution of
+essential commodities under the Public Distribution System (PDS). With the increasing scale and
+complexity of operations, there is a growing need to adopt advanced technologies to improve
+efficiency, accuracy, and transparency across supply chain processes.
+One of the key opportunities identified lies in leveraging Artificial Intelligence (AI) and video analytics
+to harness the potential of existing CCTV infrastructure deployed across warehouses. AI-driven
+solutions can help automate critical operational tasks such as inventory verification, vehicle tracking,
+access control, and real-time monitoring, significantly reducing manual errors and enhancing security.
+To explore innovative, scalable, and cost-effective solutions, APSCSCL is organizing a Hackathon aimed
+at engaging startups, incubators, research institutions, and technology experts. The objective is to
+identify and pilot AI-based video (CCTV feed) analytics solutions for real-world use cases observed in
+APSCSCL warehouses and other godowns. Successful prototypes from this Hackathon will be
+considered for further development and deployment through formal engagements with APSCSCL.
+2 USE CASES AND PROBLEM STATEMENTS
+AIM: DEVELOP REAL-TIME COMPUTER VISION BASED VIDEO ANALYTICS USING CCTV
+CAMERAS FOR PUBLIC WAREHOUSE MONITORING, IMPROVING SECURITY, AND
+OPTIMIZING INVENTORY HANDLING OPERATIONS
+Participants are expected to develop solutions for the problem statements as mentioned below. The
+proposed solutions should demonstrate scalability, cost-effectiveness, and integration capabilities with
+existing infrastructure.
+SN Use Cases Problem Statement Description
+1 Real-time
+gunny bags Develop an AI-powered
+The solution should use AI-driven video analytics to
+track and count gunny bags in real time from CCTV
+FCS51-13022/8/2025-MRKT SEC - APSCSCL I/4060279/2025
+counting
+and
+volumetric
+analysis
+system to dynamically track,
+count, and perform
+volumetric analysis of gunny
+bags, automatically
+measuring and verifying their
+numbers while being loaded,
+unloaded, and stacked in
+warehouses.
+footage. It must have adaptive contrast enhancement
+for poor lighting and employ techniques like:
+ Computer vision models like Yolo, SAM, Detr, etc.
+for object detection and motion tracking for
+accuracy
+ Real-time streaming inference using HTTP REST or
+gRPC for real-time object tracking
+2
+AI-Powered
+Vehicle
+Recognition
+Build an AI-based vehicle
+recognition system that reads
+and logs vehicle license
+plates for authentication and
+tracking at warehouse
+premises.
+The solution should use optical character recognition
+(OCR) and AI-powered image processing to detect &
+read vehicle number plates from CCTV footage and
+alert to unauthorized entries. It must support
+timestamp logging, movement tracking, vehicle
+categorization, multiple languages/fonts, and function
+in variable lighting conditions.
+3
+AI-Driven
+Facial
+Recognition
+Develop a facial recognition
+system to authenticate
+warehouse managers,
+hamalis (labour), and detect
+unauthorized intrusions in
+real time.
+The solution should use AI-based facial recognition to
+identify and verify individuals in CCTV footage,
+distinguishing authorized personnel from unknown
+individuals and triggering near real-time alerts for
+unauthorized access. It must function efficiently in
+different lighting conditions and maintain a history log
+for better monitoring.
+4
+Contextual
+Intelligence
+for near
+Real-time
+analysis and
+Query
+Develop an AI-powered
+system capable of analyzing
+videos in near real-time,
+grounded in context to
+capture anomalies and
+events. Enabling users to
+search, retrieve and query
+activities in video scenes
+The solution will utilize AI-driven video analysis to
+process CCTV or video feeds in near real-time,
+identifying contextual anomalies (e.g., unusual
+movements or behaviors) and significant events (e.g.,
+specific activities or incidents) within warehouse
+environments. It will enable users to search and
+retrieve video segments based on specific activities or
+events and query the system for detailed insights (e.g.,
+timestamps, locations, or individuals involved). The
+system must operate reliably under varying conditions,
+such as different lighting or camera angles, and
+maintain a searchable log of analyzed events for
+efficient monitoring and review.
+2.1 AI TOOLS RECOMMENDATIONS
+1. All participants must ensure ethical AI practices, including fairness, accountability, and compliance with
+the Digital Personal Data Protection (DPDP) Act, 2023.
+2. Participants are encouraged to use state-of-the-art, open-source models and lightweight architectures*
+such as:
+ YOLOv8, Detectron2, DINOv2 for object detection.
+FCS51-13022/8/2025-MRKT SEC - APSCSCL I/4060279/2025
+ PaddleOCR, Donut, EasyOCR for license plate recognition.
+ ArcFace, DeepSort for face recognition and tracking.
+ MiDaS, SAM (Segment Anything), NeRF for 3D scene understanding
+ LLMs can be used to generate contextual intelligence
+*The list mentioned above is indicative. The participants are free to use their own tools.
+3 SHORT, MID, AND LONG-TERM EXPECTATIONS
+SN Use Cases Short term Mid term Long term
+1
+Real-time
+gunny bags
+counting
+and
+volumetric
+analysis
+Develop a PoC to be
+deployed in AP Civil Supplies
+warehouses for counting and
+volumetric analysis of gunny
+bags in motion from CCTV
+footage. Ensure moderate
+accuracy and real-time
+display of count data
+Enhance accuracy, optimize
+AI models for different
+lighting conditions, and
+integrate real-time error
+correction. Deploy at
+multiple warehouse sites.
+Implement a fully
+automated system
+integrated with the AP
+Civil Supplies portal for
+real-time stock
+monitoring and predictive
+analytics.
+2
+AI-Powered
+Vehicle
+Recognition
+Develop a PoC deployed in
+AP Civil Supplies warehouses
+to read vehicle license plates
+from CCTV footage and
+validate recognition
+accuracy.
+Enhance robustness for
+varying plate designs and
+lighting conditions,
+integrate with the VAHAN
+portal (of NIC) for vehicle
+authentication, and deploy
+at key locations.
+Implement a fully
+automated system across
+all warehouses with
+centralized vehicle
+tracking, real-time alerts
+for unauthorized vehicles,
+and AP Civil Supplies
+portal integration.
+3
+AI-Driven
+Facial
+Recognition
+Deploy a PoC in AP Civil
+Supplies warehouses for
+facial recognition of
+managers and workers using
+CCTV footage, with basic
+authentication accuracy.
+Improve accuracy for partial
+obstructions (e.g., masks,
+caps), implement real-time
+alerts for unauthorized
+access, and integrate with
+attendance records.
+Scale across all
+warehouses with an AI-
+driven security system,
+real-time monitoring, and
+predictive threat
+detection for enhanced
+security.
+4
+Contextual
+Intelligence
+for Real-
+time
+analysis and
+Query
+Deploy a PoC using AP Civil
+CCTV footage to analyze
+videos for contextual insights
+and provide verbose
+description of events.
+Incorporate event detection
+for a broad range of events
+and incidents based on
+real-time CCTV footage
+stream. Allow end users to
+reconfigure an “event” or
+“incident”. Notify at the
+time of event in near real-
+time.
+Allow user configurable
+events. Provide users the
+ability to query events
+from a corpus of videos in
+“YouTube” style format
+based on free-style search
+and chat freely based on
+Natural language in
+English (and Telugu).
+FCS51-13022/8/2025-MRKT SEC - APSCSCL I/4060279/2025
+4 IMPLEMENTATION MECHANISM
+4.1 PHASE 1: APPLICATION, INITIAL SCREENING, AND INITIAL SHORTLISTING
+A. Application Submission (Deadline- 10th May 2025): Participants will submit their application
+form along with the following:
+ Brief proposal on which use case(s) they are applying for.
+ Team credentials (organization/start-up details, if applicable).
+ Technical approach and proposed solution methodology.
+Note: Participants can apply for one or multiple use cases, but preference will be given to those
+with capability across more use cases (refer to point 4 under the Eligibility Criteria table).
+B. Screening and shortlisting (Deadline: 15th May 2025): A panel of evaluators will screen the
+applications based on the generic eligibility criteria listed below.
+SN Eligibility criteria Description Marks
+1 Relevance of Proposed
+Solution Solution's relevance to the selected use case(s) 20
+2 Technical Feasibility Is the solution practically implementable and scalable? 40
+3 Multi-Use-Case
+Capability
+Number of use cases they are addressing (Addressing 4 – 40, 3 – 30,
+2 – 20, 1 – 10) 40
+The top 6 participants will be shortlisted for the next stage. The shortlisted participants will be sent
+email confirmation regarding their selection for the next round. These participants will then proceed to
+Phase 2.
+4.2 PHASE 2: ON-GROUND TESTING & SHOWCASE
+A. On-ground testing at selected warehouses (Deadline: 31st May): Shortlisted participants will be
+provided-
+ Remote access to real-time warehouse camera feeds
+ Necessary guidelines on data handling and privacy compliance
+They will be required to:
+ Conduct their solution testing in real-world conditions.
+ Fine-tune their models/approaches based on live camera data.
+FCS51-13022/8/2025-MRKT SEC - APSCSCL I/4060279/2025
+ Record and document outputs and insights in the use cases they are participating in.
+Note: APSCSCL will facilitate controlled access to cameras.
+B. Showcase of solutions (Deadline: 2nd & 3rd June): Participants must
+ Present their analysis/findings, including:
+o Technical outcomes.
+o Accuracy rates, edge case handling, etc.
+o Video footage demonstrating the solution in action (screen-recorded or feed-extracted).
+o Limitations and learnings.
+ Submit a detailed demo report with visual evidence.
+ The evaluation committee will consist of:
+o Commissioner, AP Civil Supplies Department.
+o Vice Chairman & Managing Director, AP State Civil Supplies Corporation Limited
+(APSCSCL)
+o Independent Technical Experts
+Note: Each team will be given 30 minutes to present the above-mentioned details.
+C. Evaluation and Scoring (Deadline: 4th June): The presentations of the participants will be
+evaluated based on the following criteria. The scoring for each criterion has been mentioned
+below:
+Technical feasibility Scalability Cost-effectiveness Impact Integration
+20 20 20 20 20
+SN Use Cases Technical
+feasibility Scalability Cost-
+effectiveness Impact Integration
+1
+Real-time
+gunny bags
+counting and
+volumetric
+analysis
+Accuracy of
+real-time bag
+detection in
+motion using
+CCTV; minimal
+latency
+Can be scaled
+across
+multiple
+warehouses
+Requires only a
+software layer
+over existing
+infrastructure
+Automates a manual
+task; improves
+transparency and
+reduces pilferage
+Sync with
+APSCSCL’s
+portal
+2
+AI-Powered
+Vehicle
+Recognition
+OCR accuracy
+in various
+lighting,
+angles, and
+plate formats
+Scalable to
+all entry/exit
+points with
+fixed
+cameras
+Software-only
+solution using
+existing
+cameras; low
+hardware cost
+Secures
+inbound/outbound
+logistics and
+prevents
+unauthorized access
+Integration
+with the
+VAHAN
+portal and
+APSCSCL’s
+portal
+3
+AI-Driven
+Facial
+Recognition
+Face
+detection
+accuracy
+under
+Can be
+deployed
+across all
+warehouses
+Reuses existing
+CCTV; low per-
+site cost after
+base model is
+Increases warehouse
+security and
+supports attendance
+validation
+Seamless
+integration
+with
+APSCSCL’s
+FCS51-13022/8/2025-MRKT SEC - APSCSCL I/4060279/2025
+obstructions
+(masks, low
+light, angles)
+for staff and
+intruder
+verification
+ready portal
+4
+Contextual
+Intelligence
+for Real-time
+analysis and
+Query
+Ability to
+analyze videos
+and capture
+significant
+events under
+different
+conditions
+Applicable
+across all
+warehouses
+with a variety
+of events and
+incidents in
+near real-
+time
+Reduce cost of
+inference using
+existing CCTV
+video stream
+Enables high recall
+of event detection
+across a range of
+target events
+Seamless
+integration
+with
+APSCSCL’s
+portal
+The Top 3 participants will be selected as winners of the Hackathon challenge.
+Phase 3: Award (Deadline: 5th June): The Top 3 winners will receive cash prizes, as detailed below.
+Sl. No. Rank Prize Amount
+1. 1st ₹ 10 lakhs
+2. 2nd ₹ 5 lakhs
+3. 3rd ₹ 3 lakhs
+Phase 4: Procurement (15th June onwards): The Top 3 winners will be presented opportunity for
+deployment as a part of APSCSCL Portal (Digital Stack) as per the MSME / Startup Policy of Andhra
+Pradesh that provides purchase preference and market access to the winners of such hackathons /
+grand challenges.
+5 TIMELINES AND DURATION
+S. No. Milestone Date
+1 Launch of Hackathon 21/04/2025
+2 Application submission deadline 10/05/2025
+3 Shortlisting announcement 15/05/2025
+4 On-ground testing 16/05/2025 to 31/05/2025
+5 Presentation round 02/06/2025 to 03/06/2025
+6 Evaluation and scoring 04/06/2025
+7 Award 05/06/2025
+8 Procurement 15/06/2025 onwards
+6 SUPPORT AND QUERIES
+FCS51-13022/8/2025-MRKT SEC - APSCSCL I/4060279/2025
+The participants are encouraged to reach out to the designated SPOCs for any queries related to:
+ Application process and eligibility
+ Clarifications on use cases and problem statements
+ Submission requirements and timelines.
+Please reach out to the following SPOCs:
+Sl. No. Milestone Designation Email ID Contact number
+1 Sri Lakshmi Manager Storage pdsho.apscsc@ap.gov.in 7093501314
+2 Goutham Consultant ksgoutham94@gmail.com 9486875272
+FCS51-13022/8/2025-MRKT SEC - APSCSCL I/4060279/2025

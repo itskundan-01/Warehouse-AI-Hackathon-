@@ -1,0 +1,110 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+.venv
+env.bak/
+venv.bak/
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.*.sw*
+.ipynb_checkpoints/
+
+# Project specific
+data/
+models/
+logs/
+*.log
+
+# ML specific
+*.pt
+*.pth
+*.h5
+*.onnx
+*.tflite
+*.pb
+
+# Database
+*.sqlite3
+*.db
+*.rdb
+postgres-data/
+
+# Docker
+.docker/
+docker-volume/
+docker-volumes/
+
+# Large media files that should be stored with Git LFS instead
+*.zip
+*.tar.gz
+*.mp4
+*.mov
+*.avi
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Secrets
+*.pem
+*.key
+*.cert
+*.crt
+creds/
+
+# Documentation artifacts
+_build/
+_static/
+_templates/
+
+# Byte-compiled / optimized files
+__pycache__/

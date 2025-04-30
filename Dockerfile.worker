@@ -1,0 +1,56 @@
+# Multi-stage build for worker service
+
+# Stage 1: Builder
+FROM python:3.10-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install dependencies
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+
+# Stage 2: Runtime
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install runtime dependencies for OpenCV and other ML libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy wheels and requirements from builder stage
+COPY --from=builder /app/wheels /wheels
+COPY --from=builder /app/requirements.txt .
+
+# Install dependencies
+RUN pip install --no-cache /wheels/*
+
+# Copy source code
+COPY ./src /app/src
+
+# Copy models, if any
+COPY ./models /app/models
+
+# Create necessary directories
+RUN mkdir -p /app/data /app/logs
+
+# Set environment variable for Python path
+ENV PYTHONPATH=/app
+
+# Set non-root user for better security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Command to run the worker
+CMD ["python", "-m", "src.main", "--mode", "worker"]
