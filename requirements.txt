@@ -23,6 +23,8 @@ httpx>=0.24.1
 
 # ML libraries - Install as needed
 # These are commented out to avoid issues during initial setup
-# opencv-python>=4.7.0
+opencv-python>=4.11.0
 # torch>=2.0.0  # Install with: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 # ultralytics>=8.0.0  # YOLOv8
+
+numpy>=2.2.5

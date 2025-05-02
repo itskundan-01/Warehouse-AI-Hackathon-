@@ -53,8 +53,9 @@ Thumbs.db
 .ipynb_checkpoints/
 
 # Project specific
-data/
-models/
+data/db_backups/
+models/*
+!models/facial/.gitkeep
 logs/
 *.log
 
@@ -65,12 +66,14 @@ logs/
 *.onnx
 *.tflite
 *.pb
+*.savedmodel
 
 # Database
 *.sqlite3
 *.db
 *.rdb
 postgres-data/
+data/elasticsearch/
 
 # Docker
 .docker/
@@ -100,6 +103,9 @@ temp/
 *.cert
 *.crt
 creds/
+config/**/secrets/
+*.env.local
+*.env.*.local
 
 # Documentation artifacts
 _build/
@@ -108,3 +114,54 @@ _templates/
 
 # Byte-compiled / optimized files
 __pycache__/
+
+# Alembic migrations versions - keep structure but not content
+migrations/versions/*
+!migrations/versions/.gitkeep
+
+# Node/Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+coverage/
+.next/
+out/
+frontend/build/
+frontend/.eslintcache
+package-lock.json
+yarn.lock
+
+# Cache files
+.cache/
+.parcel-cache/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.npm/
+
+# Kubernetes secrets
+deployment/kubernetes/**/secrets/
+
+# Misc application files
+*.pid
+*.seed
+*.pid.lock
+
+# Additional Python virtual environment patterns
+.python-version
+.env.local
+.python-version
+
+# TypeScript/JavaScript
+tsconfig.tsbuildinfo
+.eslintcache
+.vercel
+.turbo
+
+# Jupyter
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
