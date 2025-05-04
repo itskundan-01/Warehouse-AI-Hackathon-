@@ -11,7 +11,6 @@ from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from src.config.settings import get_settings
@@ -87,15 +86,13 @@ def create_access_token(
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = None
+    token: str = Depends(oauth2_scheme)
 ) -> User:
     """
     Get the current user from the JWT token.
     
     Args:
         token: JWT token from Authorization header
-        db: Database session
         
     Returns:
         User: User instance
@@ -103,6 +100,8 @@ async def get_current_user(
     Raises:
         HTTPException: If the token is invalid or the user doesn't exist
     """
+    from src.database.operations import get_db
+    
     settings = get_settings()
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -131,18 +130,22 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
     
-    # Simple token validation without database access if no db session provided
-    if db is None:
-        return token_data
+    # Get database session and verify user
+    async for db in get_db():
+        try:
+            # Verify user exists in database
+            user_query = await db.execute(select(User).filter(User.id == token_data.user_id))
+            user = user_query.scalar_one_or_none()
+            
+            if user is None or not user.is_active:
+                raise credentials_exception
+                
+            return user
+        finally:
+            await db.close()
     
-    # Verify user exists in database
-    user_query = await db.execute(select(User).filter(User.id == token_data.user_id))
-    user = user_query.scalar_one_or_none()
-    
-    if user is None or not user.is_active:
-        raise credentials_exception
-        
-    return user
+    # This should never execute but is needed to satisfy the return type
+    raise credentials_exception
 
 
 async def get_current_active_user(

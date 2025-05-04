@@ -43,7 +43,7 @@ def setup_facial_recognition(
     default_config = {
         'models_directory': str(Path(__file__).parent.parent.parent.parent / "models" / "facial"),
         'detection_method': 'opencv-dnn',
-        'recognition_method': 'arcface',
+        'recognition_method': 'opencv',  # Changed from 'arcface' to 'opencv'
         'min_detection_confidence': 0.7,
         'min_recognition_confidence': 0.65,
         'enable_gpu': False,

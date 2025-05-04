@@ -14,11 +14,13 @@ import numpy as np
 import logging
 from typing import List, Dict, Tuple, Optional, Union, Any
 import os
+import sys
 from pathlib import Path
 import pickle
 import time
 from datetime import datetime
 from scipy.spatial.distance import cosine
+import subprocess
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ logger = logging.getLogger(__name__)
 class FaceRecognizer:
     """Face recognition implementation using ArcFace embeddings."""
     
-    RECOGNITION_METHODS = ["arcface", "insightface", "facenet"]
+    RECOGNITION_METHODS = ["arcface", "insightface", "facenet", "opencv"]
     
     def __init__(
         self,
@@ -40,7 +42,7 @@ class FaceRecognizer:
         Initialize face recognition with specified model.
         
         Args:
-            method: Recognition method ('arcface', 'insightface', or 'facenet')
+            method: Recognition method ('arcface', 'insightface', 'facenet', or 'opencv')
             model_path: Path to model weights (if None, uses default)
             recognition_threshold: Threshold for recognition confidence
             enable_gpu: Whether to use GPU acceleration if available
@@ -54,9 +56,11 @@ class FaceRecognizer:
         self.embedding_size = 512  # Default for ArcFace
         self.db_path = db_path
         self.embeddings_db = {}  # Dictionary of {id: embedding}
+        self.opencv_face_detector = None  # OpenCV backup detector
         
         if self.method not in self.RECOGNITION_METHODS:
-            raise ValueError(f"Recognition method must be one of {self.RECOGNITION_METHODS}")
+            logger.warning(f"Recognition method {self.method} not in {self.RECOGNITION_METHODS}, falling back to opencv")
+            self.method = "opencv"
         
         # Default model paths
         if model_path is None:
@@ -73,7 +77,12 @@ class FaceRecognizer:
             self.model_path = model_path
             
         # Initialize the selected recognition model
-        self._initialize_recognizer()
+        try:
+            self._initialize_recognizer()
+        except Exception as e:
+            logger.warning(f"Failed to initialize {self.method} recognizer: {e}. Falling back to OpenCV detector.")
+            self.method = "opencv"
+            self._initialize_opencv_detector()
         
         # Load embeddings database if provided
         if db_path and os.path.exists(db_path):
@@ -81,23 +90,77 @@ class FaceRecognizer:
         
         logger.info(f"Face recognizer initialized using {self.method} method")
         
+    def _initialize_opencv_detector(self):
+        """Initialize OpenCV's built-in face detector as fallback."""
+        logger.info("Initializing OpenCV face detector as fallback")
+        # Initialize OpenCV's face detection
+        self.opencv_face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        # OpenCV detector doesn't provide embeddings, so we'll use a dummy size
+        self.embedding_size = 128
+        
     def _initialize_recognizer(self):
         """Initialize the selected face recognition model."""
+        # Define paths
+        models_dir = Path(self.model_path).parent if self.model_path else None
+        script_path = Path(__file__).parent.parent.parent.parent / "scripts" / "download_models.py"
+
+        # Handle missing model file generically
+        def handle_missing_model(method_name):
+            logger.error(f"{method_name} model file not found at {self.model_path}")
+            
+            # Check if download script exists
+            if os.path.exists(script_path):
+                try:
+                    logger.info(f"Attempting to download the missing {method_name} model file...")
+                    subprocess.run([sys.executable, str(script_path), "--models", method_name.lower()], check=True)
+                    logger.info("Model downloaded successfully.")
+                    
+                    # Check if download was successful
+                    if not os.path.exists(self.model_path):
+                        raise FileNotFoundError(f"Model file still not found after download attempt: {self.model_path}")
+                    return True
+                except subprocess.CalledProcessError as e:
+                    logger.error(f"Failed to download the {method_name} model file: {e}")
+                    instructions = (
+                        f"\nTo manually download the model:\n"
+                        f"1. Run: python {script_path} --models {method_name.lower()}\n"
+                        f"2. Ensure the file is saved to: {models_dir}\n"
+                    )
+                    logger.info(instructions)
+                    raise FileNotFoundError(f"Model file not found and download failed: {self.model_path}. {instructions}")
+            else:
+                instructions = (
+                    f"\nThe model download script was not found at {script_path}. To resolve this issue:\n"
+                    f"1. Ensure the scripts directory exists in the project root\n"
+                    f"2. Create the download_models.py script if missing\n"
+                    f"3. Manually download the {method_name} model to: {models_dir}\n"
+                )
+                logger.error(instructions)
+                raise FileNotFoundError(f"Model file not found: {self.model_path}. Download script not found. {instructions}")
+            
+            return False
+
+        if self.method == "opencv":
+            self._initialize_opencv_detector()
+            return
+
         if self.method == "arcface":
             try:
                 import onnxruntime
                 
                 # Check if model file exists
                 if not os.path.exists(self.model_path):
-                    logger.error(f"ArcFace model file not found at {self.model_path}")
-                    raise FileNotFoundError(f"Model file not found: {self.model_path}")
+                    handle_missing_model("ArcFace")
                     
                 # Create an ONNX Runtime session
                 providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if self.enable_gpu else ['CPUExecutionProvider']
                 self.model = onnxruntime.InferenceSession(self.model_path, providers=providers)
                 self.embedding_size = 512
                 
-            except (ImportError, Exception) as e:
+            except ImportError:
+                logger.error("ONNX Runtime not installed. Required for ArcFace")
+                raise ImportError("ONNX Runtime required but not installed. Install it with 'pip install onnxruntime'")
+            except Exception as e:
                 logger.error(f"Failed to initialize ArcFace: {str(e)}")
                 raise RuntimeError(f"Failed to initialize ArcFace: {str(e)}")
                 
@@ -105,744 +168,549 @@ class FaceRecognizer:
             try:
                 # Try to use InsightFace if available
                 from insightface.app import FaceAnalysis
+                
+                # Check if model file exists
+                if self.model_path and not os.path.exists(self.model_path):
+                    handle_missing_model("InsightFace")
+                    
                 self.model = FaceAnalysis(name="buffalo_l", providers=['CPUExecutionProvider'])
                 self.model.prepare(ctx_id=-1 if not self.enable_gpu else 0)
                 self.embedding_size = 512
                 
             except ImportError:
-                logger.error("InsightFace package not installed. Please install it or use another method")
-                raise ImportError("InsightFace package required but not installed")
+                logger.error("InsightFace package not installed. Please install it with 'pip install insightface'")
+                raise ImportError("InsightFace package required but not installed. Install it with 'pip install insightface'")
+            except Exception as e:
+                logger.error(f"Failed to initialize InsightFace: {str(e)}")
+                raise RuntimeError(f"Failed to initialize InsightFace: {str(e)}")
                 
         elif self.method == "facenet":
             try:
                 # FaceNet implementation would go here
                 # Typically using TensorFlow
                 import tensorflow as tf
+                
+                # Check if model file exists
+                if not os.path.exists(self.model_path):
+                    handle_missing_model("FaceNet")
+                    
                 self.model = tf.saved_model.load(self.model_path)
                 self.embedding_size = 128  # FaceNet typically uses 128-d embeddings
                 
             except ImportError:
                 logger.error("TensorFlow not installed. Required for FaceNet")
-                raise ImportError("TensorFlow required but not installed")
-    
-    def get_face_embedding(self, face_image: np.ndarray) -> np.ndarray:
+                raise ImportError("TensorFlow required but not installed. Install it with 'pip install tensorflow'")
+            except Exception as e:
+                logger.error(f"Failed to initialize FaceNet: {str(e)}")
+                raise RuntimeError(f"Failed to initialize FaceNet: {str(e)}")
+                
+    def generate_embedding(self, face_image: np.ndarray) -> np.ndarray:
         """
         Generate embedding for a face image.
         
         Args:
-            face_image: Preprocessed face image (should be aligned and sized according to model)
+            face_image: Extracted and aligned face image
             
         Returns:
-            Face embedding as a numpy array
+            Face embedding vector
         """
-        if face_image is None or face_image.size == 0:
-            raise ValueError("Empty face image provided")
+        try:
+            # Check if image is appropriate for embedding generation
+            if face_image is None or face_image.size == 0:
+                raise ValueError("Invalid face image")
+                
+            # Normalize input image based on method
+            if self.method == "arcface":
+                # ArcFace preprocessing
+                if face_image.shape != (112, 112, 3):
+                    face_image = cv2.resize(face_image, (112, 112))
+                # Convert to RGB if grayscale
+                if len(face_image.shape) == 2:
+                    face_image = cv2.cvtColor(face_image, cv2.COLOR_GRAY2RGB)
+                # Normalize to range [0, 1] and convert to BCHW
+                img = face_image.astype(np.float32) / 255.0
+                img = (img - 0.5) / 0.5  # Normalize to [-1, 1]
+                img = img.transpose(2, 0, 1)  # HWC to CHW
+                img = np.expand_dims(img, axis=0)  # Add batch dimension
+                
+                # Run inference
+                input_name = self.model.get_inputs()[0].name
+                outputs = self.model.run(None, {input_name: img})
+                embedding = outputs[0][0]
+                
+            elif self.method == "insightface":
+                # InsightFace preprocessing and embedding generation
+                faces = self.model.get(face_image)
+                if len(faces) == 0:
+                    raise ValueError("No face detected by InsightFace")
+                embedding = faces[0].embedding
+                
+            elif self.method == "facenet":
+                # FaceNet preprocessing
+                if face_image.shape[:2] != (160, 160):
+                    face_image = cv2.resize(face_image, (160, 160))
+                # Convert to RGB if grayscale
+                if len(face_image.shape) == 2:
+                    face_image = cv2.cvtColor(face_image, cv2.COLOR_GRAY2RGB)
+                # Normalize
+                img = face_image.astype(np.float32)
+                std = np.std(img)
+                mean = np.mean(img)
+                img = (img - mean) / std if std > 0 else img - mean
+                img = np.expand_dims(img, axis=0)
+                
+                # Run inference
+                embedding = self.model(img)
+                embedding = embedding.numpy()[0]
+                
+            elif self.method == "opencv":
+                # OpenCV fallback - use local binary patterns histogram as a simple embedding
+                embedding = self._generate_opencv_embedding(face_image)
+                
+            else:
+                raise ValueError(f"Unsupported method: {self.method}")
+                
+            # Normalize embedding to unit length
+            norm = np.linalg.norm(embedding)
+            if norm > 0:
+                embedding = embedding / norm
+                
+            return embedding
             
-        if self.method == "arcface":
-            return self._get_embedding_arcface(face_image)
-        elif self.method == "insightface":
-            return self._get_embedding_insightface(face_image)
-        elif self.method == "facenet":
-            return self._get_embedding_facenet(face_image)
-            
-    def _get_embedding_arcface(self, face_image: np.ndarray) -> np.ndarray:
-        """Generate embedding using ArcFace ONNX model."""
-        # Preprocess image
-        # ArcFace typically expects BGR input, 112x112, float32 in range [0, 1]
-        if face_image.shape[:2] != (112, 112):
-            face_image = cv2.resize(face_image, (112, 112))
-            
-        # Convert to BGR if it's not already
-        if len(face_image.shape) == 2:
-            # Convert grayscale to BGR
-            face_image = cv2.cvtColor(face_image, cv2.COLOR_GRAY2BGR)
-        elif face_image.shape[2] == 4:
-            # Convert BGRA to BGR
-            face_image = face_image[:, :, :3]
-            
-        # Normalize and transpose to NCHW format (batch, channels, height, width)
-        blob = cv2.dnn.blobFromImage(
-            face_image, 
-            1.0/255.0,  # scale factor
-            (112, 112),  # size
-            (0, 0, 0),   # mean
-            swapRB=False,  # ArcFace expects BGR
-            crop=False
-        )
-        
-        # Run inference
-        input_name = self.model.get_inputs()[0].name
-        outputs = self.model.run(None, {input_name: blob})
-        
-        # Get embedding and normalize
-        embedding = outputs[0][0]
-        embedding = embedding / np.linalg.norm(embedding)
-        
-        return embedding
-        
-    def _get_embedding_insightface(self, face_image: np.ndarray) -> np.ndarray:
-        """Generate embedding using InsightFace."""
-        # InsightFace expects RGB
-        rgb_image = cv2.cvtColor(face_image, cv2.COLOR_BGR2RGB)
-        
-        # Get face analysis
-        faces = self.model.get(rgb_image)
-        if len(faces) == 0:
-            raise ValueError("No face detected in the image by InsightFace")
-            
-        # Use the embedding from the first (and hopefully only) face
-        embedding = faces[0].embedding
-        
-        # Normalize
-        embedding = embedding / np.linalg.norm(embedding)
-        
-        return embedding
-        
-    def _get_embedding_facenet(self, face_image: np.ndarray) -> np.ndarray:
-        """Generate embedding using FaceNet."""
-        # Preprocess for FaceNet
-        # FaceNet typically expects RGB input, 160x160
-        if face_image.shape[:2] != (160, 160):
-            face_image = cv2.resize(face_image, (160, 160))
-            
-        # Convert BGR to RGB
-        rgb_image = cv2.cvtColor(face_image, cv2.COLOR_BGR2RGB)
-        
-        # Normalize pixel values to [-1, 1]
-        normalized_image = (rgb_image - 127.5) / 128.0
-        
-        # Add batch dimension
-        input_image = np.expand_dims(normalized_image, axis=0).astype(np.float32)
-        
-        # Run inference using TensorFlow
-        embedding = self.model(input_image)[0]
-        
-        # Normalize
-        embedding = embedding / np.linalg.norm(embedding)
-        
-        return embedding
+        except Exception as e:
+            logger.error(f"Error generating embedding: {str(e)}")
+            # Return empty embedding in case of error
+            return np.zeros(self.embedding_size, dtype=np.float32)
     
-    def compare_embeddings(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
+    def _generate_opencv_embedding(self, face_image: np.ndarray) -> np.ndarray:
         """
-        Compare two face embeddings and return similarity score.
+        Generate a simple embedding using OpenCV's LBP histograms.
+        This is a fallback when deep learning models are unavailable.
         
         Args:
-            embedding1, embedding2: Face embeddings to compare
+            face_image: Aligned face image
             
         Returns:
-            Similarity score (higher is more similar, typically 0-1)
+            Simple face descriptor based on LBP histogram
         """
-        # Using cosine similarity: 1 - cosine distance
-        similarity = 1.0 - cosine(embedding1, embedding2)
-        return similarity
+        # Resize for consistency
+        face = cv2.resize(face_image, (64, 64))
+        
+        # Convert to grayscale if needed
+        if len(face.shape) > 2:
+            face = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
+        
+        # Apply LBP
+        radius = 1
+        n_points = 8 * radius
+        lbp = self._local_binary_pattern(face, n_points, radius, method="uniform")
+        
+        # Compute histogram
+        n_bins = n_points + 2  # uniform pattern produces n_points+2 values
+        hist, _ = np.histogram(lbp.ravel(), bins=n_bins, range=(0, n_bins))
+        
+        # Normalize histogram
+        hist = hist.astype("float")
+        hist /= (hist.sum() + 1e-6)
+        
+        # If embedding_size is larger than histogram, pad with zeros
+        if len(hist) < self.embedding_size:
+            embedding = np.zeros(self.embedding_size, dtype=np.float32)
+            embedding[:len(hist)] = hist
+        else:
+            # If histogram is too large, truncate
+            embedding = hist[:self.embedding_size].astype(np.float32)
+            
+        return embedding
     
-    def find_match(
-        self, 
-        embedding: np.ndarray,
-        return_all_scores: bool = False
-    ) -> Union[Dict, Tuple[Dict, Dict]]:
+    def _local_binary_pattern(self, image, n_points, radius, method="uniform"):
         """
-        Find the closest match for a face embedding in the database.
+        Compute local binary pattern for an image.
+        A simplified version for OpenCV fallback.
         
         Args:
-            embedding: Face embedding to search for
-            return_all_scores: Whether to return all similarity scores
+            image: Input grayscale image
+            n_points: Number of points
+            radius: Radius of circle
+            method: LBP method
             
         Returns:
-            If return_all_scores is False:
-                Dict with match info: {
-                    'id': personnel_id, 
-                    'similarity': similarity_score,
-                    'is_match': boolean indicating if above threshold
-                }
-            If return_all_scores is True:
-                Tuple of (match_info, all_scores)
-                where all_scores is {personnel_id: similarity_score}
+            LBP image
+        """
+        # Get dimensions
+        height, width = image.shape
+        
+        # Initialize output LBP image
+        lbp = np.zeros((height, width), dtype=np.uint8)
+        
+        # Loop through the image
+        for y in range(radius, height - radius):
+            for x in range(radius, width - radius):
+                # Get center pixel value
+                center = image[y, x]
+                binary_code = 0
+                
+                # Sample points around the center
+                for i in range(n_points):
+                    # Calculate sample point coordinates
+                    theta = 2 * np.pi * i / n_points
+                    x_i = x + radius * np.cos(theta)
+                    y_i = y + radius * np.sin(theta)
+                    
+                    # Bilinear interpolation
+                    x1, y1 = int(x_i), int(y_i)
+                    x2, y2 = min(x1 + 1, width - 1), min(y1 + 1, height - 1)
+                    dx, dy = x_i - x1, y_i - y1
+                    
+                    # Get interpolated value
+                    value = (1 - dx) * (1 - dy) * image[y1, x1] + \
+                            dx * (1 - dy) * image[y1, x2] + \
+                            (1 - dx) * dy * image[y2, x1] + \
+                            dx * dy * image[y2, x2]
+                    
+                    # Update binary code
+                    if value >= center:
+                        binary_code |= (1 << i)
+                
+                # Assign LBP value to the pixel
+                lbp[y, x] = binary_code
+                
+        return lbp
+    
+    def recognize_face(self, embedding: np.ndarray, min_confidence: float = None) -> Tuple[Optional[str], float]:
+        """
+        Recognize a face by comparing its embedding with stored embeddings.
+        
+        Args:
+            embedding: Face embedding to compare
+            min_confidence: Override default recognition confidence threshold
+            
+        Returns:
+            Tuple of (identity, confidence)
         """
         if not self.embeddings_db:
-            return {'id': None, 'similarity': 0.0, 'is_match': False}
+            return None, 0.0
             
-        best_match_id = None
-        best_match_score = -1.0
-        all_scores = {}
-        
-        # Compare with all embeddings in database
-        for person_id, stored_embedding in self.embeddings_db.items():
-            similarity = self.compare_embeddings(embedding, stored_embedding)
-            all_scores[person_id] = similarity
+        if min_confidence is None:
+            min_confidence = self.recognition_threshold
             
-            if similarity > best_match_score:
-                best_match_score = similarity
-                best_match_id = person_id
+        # Calculate cosine similarity with all stored embeddings
+        best_match = None
+        best_score = -1.0
         
-        result = {
-            'id': best_match_id,
-            'similarity': best_match_score,
-            'is_match': best_match_score >= self.recognition_threshold
-        }
-        
-        if return_all_scores:
-            return result, all_scores
+        for identity, stored_embedding in self.embeddings_db.items():
+            # Skip if stored embedding is not valid
+            if stored_embedding is None or len(stored_embedding) == 0:
+                continue
+                
+            # Normalize the stored embedding if not already normalized
+            norm = np.linalg.norm(stored_embedding)
+            if norm > 0:
+                stored_embedding = stored_embedding / norm
+                
+            # Calculate cosine similarity (dot product of normalized vectors)
+            similarity = np.dot(embedding, stored_embedding)
+            
+            # Update best match
+            if similarity > best_score:
+                best_score = similarity
+                best_match = identity
+                
+        # Return best match if above threshold
+        if best_score >= min_confidence:
+            return best_match, best_score
         else:
-            return result
-            
-    def add_to_database(
-        self, 
-        person_id: str,
-        embedding: np.ndarray,
-        auto_save: bool = False
-    ) -> bool:
+            return None, best_score
+    
+    def detect_faces(self, image: np.ndarray, min_face_size: int = 30) -> List[Dict[str, Any]]:
         """
-        Add a face embedding to the database.
+        Detect faces in an input image.
         
         Args:
-            person_id: Unique identifier for the person
-            embedding: Face embedding to store
-            auto_save: Whether to automatically save the updated database
+            image: Input image (BGR format)
+            min_face_size: Minimum face size to detect (in pixels)
             
         Returns:
-            True if added successfully, False otherwise
+            List of detected faces with their bounding boxes and landmarks
         """
-        if person_id is None or embedding is None:
-            return False
-        
-        # Store the embedding
-        self.embeddings_db[person_id] = embedding
-        
-        # Save if requested
-        if auto_save and self.db_path:
-            self.save_embeddings_db(self.db_path)
-        
-        return True
-        
-    def remove_from_database(
-        self, 
-        person_id: str,
-        auto_save: bool = False
-    ) -> bool:
-        """
-        Remove a person from the embeddings database.
-        
-        Args:
-            person_id: Unique identifier for the person to remove
-            auto_save: Whether to automatically save the updated database
+        if image is None or image.size == 0:
+            logger.warning("Empty image provided to face detector")
+            return []
             
-        Returns:
-            True if removed successfully, False if not found
-        """
-        if person_id in self.embeddings_db:
-            del self.embeddings_db[person_id]
-            
-            # Save if requested
-            if auto_save and self.db_path:
-                self.save_embeddings_db(self.db_path)
-            
-            return True
-        else:
-            return False
+        # Create a copy to avoid modifying the original
+        img = image.copy()
         
-    def save_embeddings_db(self, path: str) -> bool:
-        """
-        Save the embeddings database to a file.
+        # Convert to RGB if needed for certain models
+        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
-        Args:
-            path: File path to save the database
-            
-        Returns:
-            True if saved successfully, False otherwise
-        """
+        faces = []
+        
         try:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(path, 'wb') as f:
-                pickle.dump(self.embeddings_db, f)
-            self.db_path = path
-            logger.info(f"Saved embeddings database with {len(self.embeddings_db)} entries to {path}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to save embeddings database: {str(e)}")
-            return False
-            
-    def load_embeddings_db(self, path: str) -> bool:
-        """
-        Load embeddings database from a file.
-        
-        Args:
-            path: File path to load the database from
-            
-        Returns:
-            True if loaded successfully, False otherwise
-        """
-        try:
-            with open(path, 'rb') as f:
-                self.embeddings_db = pickle.load(f)
-            self.db_path = path
-            logger.info(f"Loaded embeddings database with {len(self.embeddings_db)} entries from {path}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to load embeddings database: {str(e)}")
-            return False
-            
-    def get_database_stats(self) -> Dict[str, Any]:
-        """
-        Get statistics about the embeddings database.
-        
-        Returns:
-            Dictionary with stats like count, last modified time, etc.
-        """
-        stats = {
-            'count': len(self.embeddings_db),
-            'db_path': self.db_path,
-        }
-        
-        if self.db_path and os.path.exists(self.db_path):
-            stats['last_modified'] = datetime.fromtimestamp(
-                os.path.getmtime(self.db_path)
-            ).strftime('%Y-%m-%d %H:%M:%S')
-            stats['size_bytes'] = os.path.getsize(self.db_path)
-        
-        return stats
-        
-    def detect_and_recognize(
-        self,
-        face_image: np.ndarray,
-        person_name: Optional[str] = None,
-        confidence_threshold: Optional[float] = None
-    ) -> Dict[str, Any]:
-        """
-        Complete recognition workflow: extract features and find match.
-        
-        Args:
-            face_image: Preprocessed face image
-            person_name: If provided, validates if the face belongs to this person
-            confidence_threshold: Optional override for recognition threshold
-            
-        Returns:
-            Recognition results
-        """
-        start_time = time.time()
-        
-        # Use class threshold if none provided
-        if confidence_threshold is None:
-            confidence_threshold = self.recognition_threshold
-            
-        try:
-            # Generate embedding
-            embedding = self.get_face_embedding(face_image)
-            
-            # If we're validating a specific person
-            if person_name:
-                if person_name in self.embeddings_db:
-                    stored_embedding = self.embeddings_db[person_name]
-                    similarity = self.compare_embeddings(embedding, stored_embedding)
+            if self.method == "arcface":
+                # Use MTCNN or another face detector compatible with ArcFace
+                try:
+                    from mtcnn import MTCNN
+                    detector = MTCNN()
+                    detections = detector.detect_faces(rgb_img)
                     
-                    result = {
-                        'id': person_name,
-                        'similarity': float(similarity),
-                        'is_match': similarity >= confidence_threshold,
-                        'processing_time': time.time() - start_time
-                    }
-                else:
-                    result = {
-                        'id': None,
-                        'similarity': 0.0,
-                        'is_match': False,
-                        'error': f"Person {person_name} not found in database",
-                        'processing_time': time.time() - start_time
-                    }
-            else:
-                # Find best match
-                match_result = self.find_match(embedding)
-                match_result['processing_time'] = time.time() - start_time
-                result = match_result
-            
-            return result
-        
-        except Exception as e:
-            logger.error(f"Error in detect_and_recognize: {str(e)}")
-            return {
-                'id': None,
-                'similarity': 0.0,
-                'is_match': False,
-                'error': str(e),
-                'processing_time': time.time() - start_time
-            }
-            
-    def implement_anti_spoofing(self, face_image: np.ndarray) -> Dict[str, Any]:
-        """
-        Implement anti-spoofing detection to prevent presentation attacks.
-        
-        Args:
-            face_image: Input face image
-            
-        Returns:
-            Dictionary with anti-spoofing results including:
-            - is_real: Boolean indicating if the face is real or a spoof
-            - confidence: Confidence score of the detection
-            - method: Method(s) used for detection
-            - details: Additional details about the analysis
-        """
-        try:
-            # Start time for performance tracking
-            start_time = time.time()
-            
-            # Result dictionary with default values
-            result = {
-                'is_real': False,
-                'confidence': 0.0,
-                'method': 'combined',
-                'details': {},
-                'processing_time': 0.0
-            }
-            
-            # 1. Texture analysis for identifying printed materials
-            texture_score = self._analyze_texture_patterns(face_image)
-            result['details']['texture_score'] = texture_score
-            
-            # 2. Eye blink detection for liveness verification
-            blink_result = self._detect_eye_blink(face_image)
-            result['details']['blink_detection'] = blink_result
-            
-            # 3. Color variance analysis for screen detection
-            color_result = self._analyze_color_variance(face_image)
-            result['details']['color_analysis'] = color_result
-            
-            # 4. Depth analysis (using image cues to simulate depth detection)
-            depth_result = self._analyze_depth_cues(face_image)
-            result['details']['depth_analysis'] = depth_result
-            
-            # 5. Reflection analysis for detecting glossy printed materials and screens
-            reflection_result = self._detect_reflections(face_image)
-            result['details']['reflection_analysis'] = reflection_result
-            
-            # Calculate weighted confidence score based on all checks
-            confidence = (
-                texture_score * 0.3 +
-                blink_result['score'] * 0.25 +
-                color_result['score'] * 0.15 + 
-                depth_result['score'] * 0.2 + 
-                reflection_result['score'] * 0.1
-            )
-            
-            # Determine if the face is real based on combined confidence
-            spoof_threshold = 0.65  # Can be adjusted or made configurable
-            is_real = confidence >= spoof_threshold
-            
-            # Update the result dictionary
-            result['is_real'] = is_real
-            result['confidence'] = confidence
-            result['processing_time'] = time.time() - start_time
-            
-            logger.debug(f"Anti-spoofing result: {result}")
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error in anti-spoofing detection: {str(e)}")
-            return {
-                'is_real': False,  # Fail closed for security
-                'confidence': 0.0,
-                'method': 'error',
-                'error': str(e),
-                'details': {},
-                'processing_time': time.time() - start_time if 'start_time' in locals() else 0.0
-            }
-    
-    def _analyze_texture_patterns(self, face_image: np.ndarray) -> float:
-        """
-        Analyze texture patterns to detect printed materials.
-        
-        Args:
-            face_image: Input face image
-            
-        Returns:
-            Confidence score (0-1) that the image is of a real face
-        """
-        # Convert to grayscale for texture analysis
-        if len(face_image.shape) > 2:
-            gray = cv2.cvtColor(face_image, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = face_image.copy()
-        
-        # Apply Local Binary Pattern (LBP) for texture analysis
-        # Simplified version of LBP
-        lbp_image = np.zeros_like(gray)
-        for i in range(1, gray.shape[0] - 1):
-            for j in range(1, gray.shape[1] - 1):
-                center = gray[i, j]
-                code = 0
-                code |= (gray[i-1, j-1] > center) << 0
-                code |= (gray[i-1, j] > center) << 1
-                code |= (gray[i-1, j+1] > center) << 2
-                code |= (gray[i, j+1] > center) << 3
-                code |= (gray[i+1, j+1] > center) << 4
-                code |= (gray[i+1, j] > center) << 5
-                code |= (gray[i+1, j-1] > center) << 6
-                code |= (gray[i, j-1] > center) << 7
-                lbp_image[i, j] = code
-        
-        # Calculate LBP histogram
-        hist, _ = np.histogram(lbp_image.ravel(), bins=256, range=(0, 256))
-        hist = hist.astype('float')
-        hist /= (hist.sum() + 1e-7)
-        
-        # Analyze histogram features
-        # Real faces tend to have more varied texture patterns
-        entropy = -np.sum(hist * np.log2(hist + 1e-7))
-        variance = np.var(hist)
-        
-        # Combine features to determine score
-        # Higher entropy and variance usually indicate a real face
-        # These thresholds can be fine-tuned
-        entropy_score = min(1.0, max(0.0, entropy / 7.5))  # Typical entropy range for real faces
-        variance_score = min(1.0, max(0.0, variance * 1000))  # Scale variance to 0-1 range
-        
-        # Combined score with weights
-        score = 0.6 * entropy_score + 0.4 * variance_score
-        
-        return score
-    
-    def _detect_eye_blink(self, face_image: np.ndarray) -> Dict[str, Any]:
-        """
-        Detect eye blinks for liveness verification.
-        
-        Args:
-            face_image: Input face image
-            
-        Returns:
-            Dictionary with blink detection results
-        """
-        # In a complete implementation, we would analyze multiple frames
-        # Since we only have a single image, we'll use eye aspect ratio as a proxy
-        try:
-            # Convert to grayscale
-            if len(face_image.shape) > 2:
-                gray = cv2.cvtColor(face_image, cv2.COLOR_BGR2GRAY)
-            else:
-                gray = face_image.copy()
-            
-            # Use OpenCV's Haar cascade to detect eyes
-            eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
-            eyes = eye_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-            
-            if len(eyes) < 2:
-                return {'score': 0.4, 'details': 'Unable to detect both eyes'}
-            
-            # Analyze eye aspect ratio (EAR)
-            # Since we can't calculate real EAR without facial landmarks,
-            # use a proxy based on eye region intensity and variance
-            eye_scores = []
-            for (ex, ey, ew, eh) in eyes:
-                eye_roi = gray[ey:ey+eh, ex:ex+ew]
-                
-                # Calculate mean and variance of eye region
-                mean_intensity = np.mean(eye_roi)
-                variance = np.var(eye_roi)
-                
-                # Eye openness score based on intensity and variance
-                # Open eyes typically have higher variance
-                eye_scores.append(min(1.0, variance / 800))
-            
-            # Average eye openness score
-            avg_score = sum(eye_scores) / len(eye_scores)
-            
-            return {
-                'score': avg_score,
-                'details': f'Eye regions analyzed: {len(eyes)}'
-            }
-        
-        except Exception as e:
-            logger.warning(f"Eye blink detection error: {str(e)}")
-            return {'score': 0.5, 'details': f'Analysis error: {str(e)}'}
-    
-    def _analyze_color_variance(self, face_image: np.ndarray) -> Dict[str, Any]:
-        """
-        Analyze color variance to detect screens or printouts.
-        
-        Args:
-            face_image: Input face image
-            
-        Returns:
-            Dictionary with color variance analysis results
-        """
-        try:
-            # Ensure we have a color image
-            if len(face_image.shape) < 3:
-                return {'score': 0.5, 'details': 'Grayscale image provided'}
-            
-            # Calculate color mean and standard deviation in different channels
-            means = []
-            stds = []
-            
-            # Split the image into channels
-            channels = cv2.split(face_image)
-            for channel in channels:
-                means.append(np.mean(channel))
-                stds.append(np.std(channel))
-            
-            # Calculate color ratios
-            ratios = []
-            for i in range(len(means) - 1):
-                for j in range(i + 1, len(means)):
-                    if means[j] != 0:
-                        ratios.append(means[i] / means[j])
-            
-            # Real faces tend to have specific color distributions
-            # and higher standard deviations in color channels
-            avg_std = np.mean(stds)
-            
-            # Calculate score based on color variance
-            # Higher variance usually indicates a real face
-            score = min(1.0, avg_std / 50.0)  # Scale to 0-1
-            
-            # Analyze color ratios for abnormalities
-            # Screens often have abnormal color ratios
-            ratio_score = 1.0
-            for ratio in ratios:
-                # Check if ratio is within expected range for human faces
-                # Typical R/G ratio is around 1.1-1.3 for most skin tones
-                if ratio < 0.7 or ratio > 1.5:
-                    ratio_score *= 0.8
-            
-            # Combined score
-            final_score = 0.7 * score + 0.3 * ratio_score
-            
-            return {
-                'score': final_score,
-                'details': {
-                    'channel_stds': stds,
-                    'channel_means': means,
-                    'color_ratios': ratios
-                }
-            }
-        
-        except Exception as e:
-            logger.warning(f"Color variance analysis error: {str(e)}")
-            return {'score': 0.5, 'details': f'Analysis error: {str(e)}'}
-    
-    def _analyze_depth_cues(self, face_image: np.ndarray) -> Dict[str, Any]:
-        """
-        Analyze depth cues from a single image.
-        
-        Args:
-            face_image: Input face image
-            
-        Returns:
-            Dictionary with depth analysis results
-        """
-        try:
-            # Convert to grayscale
-            if len(face_image.shape) > 2:
-                gray = cv2.cvtColor(face_image, cv2.COLOR_BGR2GRAY)
-            else:
-                gray = face_image.copy()
-            
-            # Apply Sobel operator to detect edges in X and Y directions
-            sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
-            sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
-            
-            # Calculate gradient magnitude
-            gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
-            
-            # Normalize gradient magnitude
-            gradient_magnitude = cv2.normalize(gradient_magnitude, None, 0, 255, cv2.NORM_MINMAX)
-            
-            # Calculate mean and standard deviation of gradient
-            mean_gradient = np.mean(gradient_magnitude)
-            std_gradient = np.std(gradient_magnitude)
-            
-            # Real faces have natural depth transitions and more varied gradients
-            # Calculate score based on gradient statistics
-            score = min(1.0, max(0.0, (mean_gradient / 40.0) * (std_gradient / 50.0)))
-            
-            # Check edge distribution
-            # Calculate histogram of gradient magnitudes
-            hist, _ = np.histogram(gradient_magnitude, bins=50)
-            hist = hist.astype('float') / (hist.sum() + 1e-7)
-            
-            # Calculate entropy of edge distribution
-            entropy = -np.sum(hist * np.log2(hist + 1e-7))
-            
-            # Higher entropy indicates more natural edge distribution
-            entropy_score = min(1.0, entropy / 5.0)
-            
-            # Combine scores
-            final_score = 0.6 * score + 0.4 * entropy_score
-            
-            return {
-                'score': final_score,
-                'details': {
-                    'mean_gradient': float(mean_gradient),
-                    'std_gradient': float(std_gradient),
-                    'edge_entropy': float(entropy)
-                }
-            }
-        
-        except Exception as e:
-            logger.warning(f"Depth analysis error: {str(e)}")
-            return {'score': 0.5, 'details': f'Analysis error: {str(e)}'}
-    
-    def _detect_reflections(self, face_image: np.ndarray) -> Dict[str, Any]:
-        """
-        Detect unnatural reflections that might indicate a screen or glossy printed image.
-        
-        Args:
-            face_image: Input face image
-            
-        Returns:
-            Dictionary with reflection analysis results
-        """
-        try:
-            # Convert to appropriate color space
-            hsv = cv2.cvtColor(face_image, cv2.COLOR_BGR2HSV)
-            
-            # Extract value channel (brightness)
-            v_channel = hsv[:,:,2]
-            
-            # Threshold to find bright spots (potential reflections)
-            _, bright_spots = cv2.threshold(v_channel, 220, 255, cv2.THRESH_BINARY)
-            
-            # Calculate percentage of bright spots
-            bright_spot_percentage = np.sum(bright_spots) / (bright_spots.size * 255)
-            
-            # Calculate distribution of bright spots
-            if np.sum(bright_spots) > 0:
-                # Get coordinates of bright spots
-                y_coords, x_coords = np.where(bright_spots > 0)
-                
-                if len(x_coords) > 1:
-                    # Calculate standard deviation of bright spot positions
-                    x_std = np.std(x_coords)
-                    y_std = np.std(y_coords)
+                    for detection in detections:
+                        confidence = detection['confidence']
+                        if confidence < 0.9:  # Filter by confidence
+                            continue
+                            
+                        x, y, w, h = detection['box']
+                        box = [x, y, x+w, y+h]
+                        
+                        # Extract landmarks
+                        landmarks = detection['keypoints']
+                        face_landmarks = {
+                            'left_eye': landmarks['left_eye'],
+                            'right_eye': landmarks['right_eye'],
+                            'nose': landmarks['nose'],
+                            'mouth_left': landmarks['mouth_left'],
+                            'mouth_right': landmarks['mouth_right']
+                        }
+                        
+                        faces.append({
+                            'bbox': box,
+                            'confidence': confidence,
+                            'landmarks': face_landmarks,
+                            'aligned_face': self._align_face(img, box, face_landmarks)
+                        })
+                except ImportError:
+                    logger.warning("MTCNN not installed, falling back to OpenCV face detector")
+                    # Fall back to OpenCV cascade
+                    faces = self._detect_faces_opencv(img, min_face_size)
                     
-                    # Calculate spatial distribution score
-                    # Well-distributed reflections are more natural
-                    distribution_score = min(1.0, (x_std + y_std) / (face_image.shape[0] / 2))
-                else:
-                    distribution_score = 0.5
+            elif self.method == "insightface":
+                # Use InsightFace's own face detector
+                face_results = self.model.get(rgb_img)
+                
+                for face in face_results:
+                    bbox = face.bbox.astype(np.int32)
+                    box = [bbox[0], bbox[1], bbox[2], bbox[3]]
+                    
+                    # Extract landmarks
+                    face_landmarks = {}
+                    landmarks = face.landmark.astype(np.int32)
+                    if landmarks.shape[0] >= 5:  # Basic 5-point landmarks
+                        face_landmarks['left_eye'] = (landmarks[0][0], landmarks[0][1])
+                        face_landmarks['right_eye'] = (landmarks[1][0], landmarks[1][1])
+                        face_landmarks['nose'] = (landmarks[2][0], landmarks[2][1])
+                        face_landmarks['mouth_left'] = (landmarks[3][0], landmarks[3][1])
+                        face_landmarks['mouth_right'] = (landmarks[4][0], landmarks[4][1])
+                    
+                    faces.append({
+                        'bbox': box,
+                        'confidence': face.det_score,
+                        'landmarks': face_landmarks,
+                        'aligned_face': face.embedding is not None,  # InsightFace already aligned the face
+                        'embedding': face.embedding  # InsightFace provides embedding directly
+                    })
+                    
+            elif self.method == "facenet":
+                # Similar to ArcFace case, use MTCNN which is compatible with FaceNet
+                try:
+                    from mtcnn import MTCNN
+                    detector = MTCNN()
+                    detections = detector.detect_faces(rgb_img)
+                    
+                    for detection in detections:
+                        confidence = detection['confidence']
+                        if confidence < 0.9:
+                            continue
+                            
+                        x, y, w, h = detection['box']
+                        box = [x, y, x+w, y+h]
+                        
+                        # Extract landmarks
+                        landmarks = detection['keypoints']
+                        face_landmarks = {
+                            'left_eye': landmarks['left_eye'],
+                            'right_eye': landmarks['right_eye'],
+                            'nose': landmarks['nose'],
+                            'mouth_left': landmarks['mouth_left'],
+                            'mouth_right': landmarks['mouth_right']
+                        }
+                        
+                        faces.append({
+                            'bbox': box,
+                            'confidence': confidence,
+                            'landmarks': face_landmarks,
+                            'aligned_face': self._align_face(img, box, face_landmarks)
+                        })
+                except ImportError:
+                    logger.warning("MTCNN not installed, falling back to OpenCV face detector")
+                    # Fall back to OpenCV cascade
+                    faces = self._detect_faces_opencv(img, min_face_size)
+                    
+            elif self.method == "opencv":
+                # Use OpenCV's built-in face detector
+                faces = self._detect_faces_opencv(img, min_face_size)
+                
             else:
-                distribution_score = 0.8  # No bright spots can be good
+                logger.error(f"Unsupported method for face detection: {self.method}")
+                return []
+                
+            return faces
             
-            # Screens and glossy prints often have unnatural reflection patterns
-            # Too many bright spots or too concentrated is suspicious
-            reflection_score = 0.0
-            
-            if bright_spot_percentage < 0.01:
-                # Very few bright spots - likely real face
-                reflection_score = 0.9
-            elif bright_spot_percentage > 0.05:
-                # Too many bright spots - likely a screen
-                reflection_score = 0.2
-            else:
-                # Moderate number of bright spots - score depends on distribution
-                reflection_score = 0.5 + 0.3 * distribution_score
-            
-            return {
-                'score': reflection_score,
-                'details': {
-                    'bright_spot_percentage': float(bright_spot_percentage),
-                    'distribution_score': float(distribution_score) if 'distribution_score' in locals() else 0.0
-                }
-            }
-        
         except Exception as e:
-            logger.warning(f"Reflection analysis error: {str(e)}")
-            return {'score': 0.5, 'details': f'Analysis error: {str(e)}'}
+            logger.error(f"Error during face detection: {str(e)}")
+            # Fallback to OpenCV detector in case of errors
+            logger.info("Falling back to OpenCV face detector")
+            return self._detect_faces_opencv(img, min_face_size)
+            
+    def _detect_faces_opencv(self, image: np.ndarray, min_face_size: int = 30) -> List[Dict[str, Any]]:
+        """
+        Detect faces using OpenCV's cascade classifier.
+        
+        Args:
+            image: Input image (BGR format)
+            min_face_size: Minimum face size to detect
+            
+        Returns:
+            List of detected faces with their bounding boxes
+        """
+        if self.opencv_face_detector is None:
+            self._initialize_opencv_detector()
+            
+        # Convert to grayscale for cascade classifier
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        # Detect faces
+        faces_rect = self.opencv_face_detector.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(min_face_size, min_face_size)
+        )
+        
+        faces = []
+        for (x, y, w, h) in faces_rect:
+            # Create bounding box
+            box = [x, y, x+w, y+h]
+            
+            # Expand box to improve face alignment
+            expanded_box = self._expand_face_box(box, image.shape[1], image.shape[0])
+            
+            # Estimate facial landmarks using relative positions
+            # This is a very rough approximation
+            face_width = expanded_box[2] - expanded_box[0]
+            face_height = expanded_box[3] - expanded_box[1]
+            
+            # Estimate eye positions based on typical facial proportions
+            left_eye_x = int(expanded_box[0] + 0.3 * face_width)
+            right_eye_x = int(expanded_box[0] + 0.7 * face_width)
+            eye_y = int(expanded_box[1] + 0.4 * face_height)
+            
+            # Estimate other facial landmarks
+            nose_x = int(expanded_box[0] + 0.5 * face_width)
+            nose_y = int(expanded_box[1] + 0.5 * face_height)
+            
+            mouth_left_x = int(expanded_box[0] + 0.35 * face_width)
+            mouth_right_x = int(expanded_box[0] + 0.65 * face_width)
+            mouth_y = int(expanded_box[1] + 0.7 * face_height)
+            
+            landmarks = {
+                'left_eye': (left_eye_x, eye_y),
+                'right_eye': (right_eye_x, eye_y),
+                'nose': (nose_x, nose_y),
+                'mouth_left': (mouth_left_x, mouth_y),
+                'mouth_right': (mouth_right_x, mouth_y)
+            }
+            
+            # Extract and align face using estimated landmarks
+            aligned_face = self._align_face(image, expanded_box, landmarks)
+            
+            faces.append({
+                'bbox': expanded_box,
+                'confidence': 0.9,  # Arbitrary confidence for OpenCV detector
+                'landmarks': landmarks,
+                'aligned_face': aligned_face
+            })
+            
+        return faces
+        
+    def _expand_face_box(self, box: List[int], img_width: int, img_height: int, expansion_factor: float = 0.2) -> List[int]:
+        """
+        Expand the face bounding box to include more context.
+        
+        Args:
+            box: Original bounding box [x1, y1, x2, y2]
+            img_width: Width of the image
+            img_height: Height of the image
+            expansion_factor: How much to expand the box by
+            
+        Returns:
+            Expanded bounding box
+        """
+        width = box[2] - box[0]
+        height = box[3] - box[1]
+        
+        # Calculate expanded coordinates
+        x1 = max(0, box[0] - int(width * expansion_factor))
+        y1 = max(0, box[1] - int(height * expansion_factor))
+        x2 = min(img_width, box[2] + int(width * expansion_factor))
+        y2 = min(img_height, box[3] + int(height * expansion_factor))
+        
+        return [x1, y1, x2, y2]
+        
+    def _align_face(self, image: np.ndarray, box: List[int], landmarks: Dict[str, Tuple[int, int]]) -> np.ndarray:
+        """
+        Align a face based on eye positions.
+        
+        Args:
+            image: Input image
+            box: Face bounding box
+            landmarks: Facial landmarks including eye positions
+            
+        Returns:
+            Aligned face image
+        """
+        # If we don't have proper landmarks, just crop the face
+        if not landmarks or 'left_eye' not in landmarks or 'right_eye' not in landmarks:
+            return image[box[1]:box[3], box[0]:box[2]]
+            
+        # Get eye centers
+        left_eye = landmarks['left_eye']
+        right_eye = landmarks['right_eye']
+        
+        # Calculate angle and scale for alignment
+        dx = right_eye[0] - left_eye[0]
+        dy = right_eye[1] - left_eye[1]
+        
+        if dx == 0:  # Avoid division by zero
+            angle = 0
+        else:
+            angle = np.degrees(np.arctan2(dy, dx))
+            
+        # Determine desired eye position based on method
+        desired_eye_x = 0.35  # Percentage of image width
+        if self.method == "arcface":
+            desired_size = (112, 112)
+        elif self.method == "facenet": 
+            desired_size = (160, 160)
+        else:
+            desired_size = (96, 96)  # Default size
+            
+        # Calculate scale from eye distance
+        eye_distance = np.sqrt((dx ** 2) + (dy ** 2))
+        desired_eye_distance = desired_size[0] * (desired_eye_x * 2)  # Left and right eye positions
+        scale = desired_eye_distance / eye_distance if eye_distance > 0 else 1.0
+        
+        # Calculate eye midpoint
+        eye_center = ((left_eye[0] + right_eye[0]) // 2, (left_eye[1] + right_eye[1]) // 2)
+        
+        # Get the rotation matrix
+        M = cv2.getRotationMatrix2D(eye_center, angle, scale)
+        
+        # Update the translation part of the matrix
+        tX = desired_size[0] * 0.5
+        tY = desired_size[1] * desired_eye_x
+        M[0, 2] += (tX - eye_center[0])
+        M[1, 2] += (tY - eye_center[1])
+        
+        # Apply the affine transformation
+        aligned_face = cv2.warpAffine(image, M, desired_size, flags=cv2.INTER_CUBIC)
+        
+        return aligned_face

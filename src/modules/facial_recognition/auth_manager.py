@@ -42,7 +42,6 @@ class AuthenticationManager:
     
     def __init__(
         self,
-        db_session_factory,
         face_recognizer: Optional[FaceRecognizer] = None,
         face_detector: Optional[FaceDetector] = None,
         security_manager: Optional[SecurityManager] = None,
@@ -52,13 +51,11 @@ class AuthenticationManager:
         Initialize the authentication manager.
         
         Args:
-            db_session_factory: Factory function to create database sessions
             face_recognizer: FaceRecognizer instance (or None to create a new one)
             face_detector: FaceDetector instance (or None to create a new one)
             security_manager: SecurityManager instance for authentication policies
             config: Configuration options for the authentication manager
         """
-        self.db_session_factory = db_session_factory
         self.security_manager = security_manager
         
         # Default configuration
@@ -109,6 +106,7 @@ class AuthenticationManager:
         
     def authenticate_face(
         self,
+        db: Session,
         face_image,
         location: str,
         camera_id: str,
@@ -118,6 +116,7 @@ class AuthenticationManager:
         Authenticate a person based on facial recognition.
         
         Args:
+            db: Database session
             face_image: Image containing a face to authenticate
             location: Physical location where authentication is happening
             camera_id: ID of the camera that captured the image
@@ -149,7 +148,7 @@ class AuthenticationManager:
                 if not anti_spoof_result['is_real']:
                     result['error'] = "Potential presentation attack detected"
                     result['processing_time'] = time.time() - start_time
-                    self._log_auth_event(result, is_spoof_attempt=True)
+                    self._log_auth_event(result, db_session=db, is_spoof_attempt=True)
                     return result
             
             # Perform face recognition
@@ -162,62 +161,61 @@ class AuthenticationManager:
             if not recognition_result.get('is_match', False) or recognition_result.get('id') is None:
                 result['error'] = "No matching personnel record found"
                 result['processing_time'] = time.time() - start_time
-                self._log_auth_event(result, is_unauthorized=True)
+                self._log_auth_event(result, db_session=db, is_unauthorized=True)
                 return result
             
             # Get personnel details from database
             personnel_id = recognition_result['id']
-            with self.db_session_factory() as db:
-                personnel = db.query(PersonnelRecord).filter(
-                    PersonnelRecord.employee_id == personnel_id,
-                    PersonnelRecord.is_active == True
-                ).first()
-                
-                if not personnel:
-                    result['error'] = f"Personnel record inactive or not found: {personnel_id}"
-                    result['processing_time'] = time.time() - start_time
-                    self._log_auth_event(result, is_unauthorized=True)
-                    return result
-                
-                # Update result with personnel data
-                result['personnel_id'] = personnel.employee_id
-                result['name'] = personnel.name
-                result['access_level'] = personnel.access_level
-                
-                # Check if access level is sufficient
-                if personnel.access_level < self.config['access_level_threshold']:
-                    result['error'] = "Insufficient access level"
-                    result['processing_time'] = time.time() - start_time
-                    self._log_auth_event(result, is_unauthorized=True)
-                    return result
-                
-                # Check for concurrent authentication limits
-                if not self._check_auth_rate_limit(personnel.employee_id):
-                    result['error'] = "Authentication rate limit exceeded"
-                    result['processing_time'] = time.time() - start_time
-                    self._log_auth_event(result, is_unauthorized=True)
-                    return result
-                
-                # All checks passed, authentication successful
-                result['authenticated'] = True
+            personnel = db.query(PersonnelRecord).filter(
+                PersonnelRecord.employee_id == personnel_id,
+                PersonnelRecord.is_active == True
+            ).first()
+            
+            if not personnel:
+                result['error'] = f"Personnel record inactive or not found: {personnel_id}"
                 result['processing_time'] = time.time() - start_time
-                
-                # Log the successful facial detection
-                detection = FacialDetection(
-                    personnel_id=personnel.id,
-                    detection_time=datetime.utcnow(),
-                    confidence_score=result['confidence'],
-                    location=location,
-                    camera_id=camera_id,
-                    is_authorized=True
-                )
-                db.add(detection)
-                db.flush()
-                
-                # Log authentication event
-                self._log_auth_event(result, db_session=db)
-                
+                self._log_auth_event(result, db_session=db, is_unauthorized=True)
                 return result
+            
+            # Update result with personnel data
+            result['personnel_id'] = personnel.employee_id
+            result['name'] = personnel.name
+            result['access_level'] = personnel.access_level
+            
+            # Check if access level is sufficient
+            if personnel.access_level < self.config['access_level_threshold']:
+                result['error'] = "Insufficient access level"
+                result['processing_time'] = time.time() - start_time
+                self._log_auth_event(result, db_session=db, is_unauthorized=True)
+                return result
+            
+            # Check for concurrent authentication limits
+            if not self._check_auth_rate_limit(personnel.employee_id):
+                result['error'] = "Authentication rate limit exceeded"
+                result['processing_time'] = time.time() - start_time
+                self._log_auth_event(result, db_session=db, is_unauthorized=True)
+                return result
+            
+            # All checks passed, authentication successful
+            result['authenticated'] = True
+            result['processing_time'] = time.time() - start_time
+            
+            # Log the successful facial detection
+            detection = FacialDetection(
+                personnel_id=personnel.id,
+                detection_time=datetime.utcnow(),
+                confidence_score=result['confidence'],
+                location=location,
+                camera_id=camera_id,
+                is_authorized=True
+            )
+            db.add(detection)
+            db.flush()
+            
+            # Log authentication event
+            self._log_auth_event(result, db_session=db)
+            
+            return result
                 
         except Exception as e:
             logger.error(f"Authentication error: {str(e)}")
@@ -227,6 +225,7 @@ class AuthenticationManager:
 
     def register_personnel(
         self,
+        db: Session,
         face_image,
         employee_id: str,
         name: str,
@@ -238,6 +237,7 @@ class AuthenticationManager:
         Register a new personnel face in the system.
         
         Args:
+            db: Database session
             face_image: Face image to register
             employee_id: Employee ID for the personnel
             name: Full name of the personnel
@@ -270,50 +270,49 @@ class AuthenticationManager:
             embedding = self.face_recognizer.get_face_embedding(face_data['face_image'])
             
             # Save to database
-            with self.db_session_factory() as db:
-                # Check if employee_id already exists
-                existing = db.query(PersonnelRecord).filter(
-                    PersonnelRecord.employee_id == employee_id
-                ).first()
-                
-                if existing:
-                    result['error'] = f"Employee ID {employee_id} already exists"
-                    result['processing_time'] = time.time() - start_time
-                    return result
-                
-                # Create new personnel record
-                personnel = PersonnelRecord(
-                    employee_id=employee_id,
-                    name=name,
-                    department=department,
-                    access_level=access_level,
-                    face_embedding=embedding.tolist(),  # Convert to list for JSON storage
-                    is_active=True
-                )
-                db.add(personnel)
-                db.flush()
-                
-                # Log the registration
-                if user_id:
-                    log_entry = AuditLog(
-                        user_id=user_id,
-                        action="personnel_registration",
-                        entity_type="personnel",
-                        entity_id=personnel.id,
-                        details=f"Registered {name} (ID: {employee_id})"
-                    )
-                    db.add(log_entry)
-                
-                # Add to face recognizer database
-                self.face_recognizer.add_to_database(
-                    employee_id,
-                    embedding,
-                    auto_save=True
-                )
-                
-                result['success'] = True
+            # Check if employee_id already exists
+            existing = db.query(PersonnelRecord).filter(
+                PersonnelRecord.employee_id == employee_id
+            ).first()
+            
+            if existing:
+                result['error'] = f"Employee ID {employee_id} already exists"
                 result['processing_time'] = time.time() - start_time
                 return result
+            
+            # Create new personnel record
+            personnel = PersonnelRecord(
+                employee_id=employee_id,
+                name=name,
+                department=department,
+                access_level=access_level,
+                face_embedding=embedding.tolist(),  # Convert to list for JSON storage
+                is_active=True
+            )
+            db.add(personnel)
+            db.flush()
+            
+            # Log the registration
+            if user_id:
+                log_entry = AuditLog(
+                    user_id=user_id,
+                    action="personnel_registration",
+                    entity_type="personnel",
+                    entity_id=personnel.id,
+                    details=f"Registered {name} (ID: {employee_id})"
+                )
+                db.add(log_entry)
+            
+            # Add to face recognizer database
+            self.face_recognizer.add_to_database(
+                employee_id,
+                embedding,
+                auto_save=True
+            )
+            
+            result['success'] = True
+            result['processing_time'] = time.time() - start_time
+            return result
                 
         except Exception as e:
             logger.error(f"Personnel registration error: {str(e)}")
@@ -323,6 +322,7 @@ class AuthenticationManager:
             
     def deactivate_personnel(
         self,
+        db: Session,
         employee_id: str,
         user_id: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -330,6 +330,7 @@ class AuthenticationManager:
         Deactivate a personnel record.
         
         Args:
+            db: Database session
             employee_id: ID of the employee to deactivate
             user_id: ID of the user performing the deactivation
             
@@ -343,37 +344,36 @@ class AuthenticationManager:
         }
         
         try:
-            with self.db_session_factory() as db:
-                personnel = db.query(PersonnelRecord).filter(
-                    PersonnelRecord.employee_id == employee_id
-                ).first()
-                
-                if not personnel:
-                    result['error'] = f"Personnel with ID {employee_id} not found"
-                    return result
-                
-                # Update record
-                personnel.is_active = False
-                
-                # Log the deactivation
-                if user_id:
-                    log_entry = AuditLog(
-                        user_id=user_id,
-                        action="personnel_deactivation",
-                        entity_type="personnel",
-                        entity_id=personnel.id,
-                        details=f"Deactivated {personnel.name} (ID: {employee_id})"
-                    )
-                    db.add(log_entry)
-                
-                # Remove from face recognizer database
-                self.face_recognizer.remove_from_database(
-                    employee_id,
-                    auto_save=True
-                )
-                
-                result['success'] = True
+            personnel = db.query(PersonnelRecord).filter(
+                PersonnelRecord.employee_id == employee_id
+            ).first()
+            
+            if not personnel:
+                result['error'] = f"Personnel with ID {employee_id} not found"
                 return result
+            
+            # Update record
+            personnel.is_active = False
+            
+            # Log the deactivation
+            if user_id:
+                log_entry = AuditLog(
+                    user_id=user_id,
+                    action="personnel_deactivation",
+                    entity_type="personnel",
+                    entity_id=personnel.id,
+                    details=f"Deactivated {personnel.name} (ID: {employee_id})"
+                )
+                db.add(log_entry)
+            
+            # Remove from face recognizer database
+            self.face_recognizer.remove_from_database(
+                employee_id,
+                auto_save=True
+            )
+            
+            result['success'] = True
+            return result
                 
         except Exception as e:
             logger.error(f"Personnel deactivation error: {str(e)}")
@@ -382,6 +382,7 @@ class AuthenticationManager:
             
     def update_access_level(
         self,
+        db: Session,
         employee_id: str,
         new_access_level: int,
         user_id: Optional[str] = None
@@ -390,6 +391,7 @@ class AuthenticationManager:
         Update a personnel's access level.
         
         Args:
+            db: Database session
             employee_id: ID of the employee to update
             new_access_level: New access level to assign
             user_id: ID of the user performing the update
@@ -406,33 +408,32 @@ class AuthenticationManager:
         }
         
         try:
-            with self.db_session_factory() as db:
-                personnel = db.query(PersonnelRecord).filter(
-                    PersonnelRecord.employee_id == employee_id
-                ).first()
-                
-                if not personnel:
-                    result['error'] = f"Personnel with ID {employee_id} not found"
-                    return result
-                
-                result['old_access_level'] = personnel.access_level
-                
-                # Update record
-                personnel.access_level = new_access_level
-                
-                # Log the update
-                if user_id:
-                    log_entry = AuditLog(
-                        user_id=user_id,
-                        action="access_level_update",
-                        entity_type="personnel",
-                        entity_id=personnel.id,
-                        details=f"Updated access level for {personnel.name} from {result['old_access_level']} to {new_access_level}"
-                    )
-                    db.add(log_entry)
-                
-                result['success'] = True
+            personnel = db.query(PersonnelRecord).filter(
+                PersonnelRecord.employee_id == employee_id
+            ).first()
+            
+            if not personnel:
+                result['error'] = f"Personnel with ID {employee_id} not found"
                 return result
+            
+            result['old_access_level'] = personnel.access_level
+            
+            # Update record
+            personnel.access_level = new_access_level
+            
+            # Log the update
+            if user_id:
+                log_entry = AuditLog(
+                    user_id=user_id,
+                    action="access_level_update",
+                    entity_type="personnel",
+                    entity_id=personnel.id,
+                    details=f"Updated access level for {personnel.name} from {result['old_access_level']} to {new_access_level}"
+                )
+                db.add(log_entry)
+            
+            result['success'] = True
+            return result
                 
         except Exception as e:
             logger.error(f"Access level update error: {str(e)}")
@@ -441,6 +442,7 @@ class AuthenticationManager:
             
     def get_authentication_history(
         self,
+        db: Session,
         employee_id: Optional[str] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
@@ -451,6 +453,7 @@ class AuthenticationManager:
         Get authentication history, optionally filtered.
         
         Args:
+            db: Database session
             employee_id: Filter by employee ID
             start_time: Filter by start time
             end_time: Filter by end time
@@ -461,46 +464,45 @@ class AuthenticationManager:
             List of authentication history records
         """
         try:
-            with self.db_session_factory() as db:
-                query = db.query(FacialDetection)
+            query = db.query(FacialDetection)
+            
+            if employee_id:
+                query = query.join(PersonnelRecord).filter(
+                    PersonnelRecord.employee_id == employee_id
+                )
                 
-                if employee_id:
-                    query = query.join(PersonnelRecord).filter(
-                        PersonnelRecord.employee_id == employee_id
-                    )
-                    
-                if start_time:
-                    query = query.filter(FacialDetection.detection_time >= start_time)
-                    
-                if end_time:
-                    query = query.filter(FacialDetection.detection_time <= end_time)
-                    
-                if location:
-                    query = query.filter(FacialDetection.location == location)
+            if start_time:
+                query = query.filter(FacialDetection.detection_time >= start_time)
                 
-                # Order by most recent first
-                query = query.order_by(FacialDetection.detection_time.desc()).limit(limit)
+            if end_time:
+                query = query.filter(FacialDetection.detection_time <= end_time)
                 
-                detections = query.all()
+            if location:
+                query = query.filter(FacialDetection.location == location)
+            
+            # Order by most recent first
+            query = query.order_by(FacialDetection.detection_time.desc()).limit(limit)
+            
+            detections = query.all()
+            
+            # Convert to dictionaries
+            result = []
+            for detection in detections:
+                personnel_name = detection.personnel.name if detection.personnel else "Unknown"
+                employee_id = detection.personnel.employee_id if detection.personnel else None
                 
-                # Convert to dictionaries
-                result = []
-                for detection in detections:
-                    personnel_name = detection.personnel.name if detection.personnel else "Unknown"
-                    employee_id = detection.personnel.employee_id if detection.personnel else None
-                    
-                    result.append({
-                        'id': str(detection.id),
-                        'personnel_id': employee_id,
-                        'name': personnel_name,
-                        'detection_time': detection.detection_time.isoformat(),
-                        'confidence': detection.confidence_score,
-                        'location': detection.location,
-                        'camera_id': detection.camera_id,
-                        'is_authorized': detection.is_authorized,
-                    })
-                
-                return result
+                result.append({
+                    'id': str(detection.id),
+                    'personnel_id': employee_id,
+                    'name': personnel_name,
+                    'detection_time': detection.detection_time.isoformat(),
+                    'confidence': detection.confidence_score,
+                    'location': detection.location,
+                    'camera_id': detection.camera_id,
+                    'is_authorized': detection.is_authorized,
+                })
+            
+            return result
                 
         except Exception as e:
             logger.error(f"Error retrieving authentication history: {str(e)}")
@@ -508,6 +510,7 @@ class AuthenticationManager:
             
     def get_unauthorized_access_attempts(
         self,
+        db: Session,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         location: Optional[str] = None,
@@ -517,6 +520,7 @@ class AuthenticationManager:
         Get unauthorized access attempts.
         
         Args:
+            db: Database session
             start_time: Filter by start time
             end_time: Filter by end time
             location: Filter by location
@@ -526,38 +530,37 @@ class AuthenticationManager:
             List of unauthorized access attempts
         """
         try:
-            with self.db_session_factory() as db:
-                query = db.query(FacialDetection).filter(
-                    FacialDetection.is_authorized == False
-                )
+            query = db.query(FacialDetection).filter(
+                FacialDetection.is_authorized == False
+            )
+            
+            if start_time:
+                query = query.filter(FacialDetection.detection_time >= start_time)
                 
-                if start_time:
-                    query = query.filter(FacialDetection.detection_time >= start_time)
-                    
-                if end_time:
-                    query = query.filter(FacialDetection.detection_time <= end_time)
-                    
-                if location:
-                    query = query.filter(FacialDetection.location == location)
+            if end_time:
+                query = query.filter(FacialDetection.detection_time <= end_time)
                 
-                # Order by most recent first
-                query = query.order_by(FacialDetection.detection_time.desc()).limit(limit)
-                
-                detections = query.all()
-                
-                # Convert to dictionaries
-                result = []
-                for detection in detections:
-                    result.append({
-                        'id': str(detection.id),
-                        'detection_time': detection.detection_time.isoformat(),
-                        'confidence': detection.confidence_score,
-                        'location': detection.location,
-                        'camera_id': detection.camera_id,
-                        'thumbnail_path': detection.thumbnail_path,
-                    })
-                
-                return result
+            if location:
+                query = query.filter(FacialDetection.location == location)
+            
+            # Order by most recent first
+            query = query.order_by(FacialDetection.detection_time.desc()).limit(limit)
+            
+            detections = query.all()
+            
+            # Convert to dictionaries
+            result = []
+            for detection in detections:
+                result.append({
+                    'id': str(detection.id),
+                    'detection_time': detection.detection_time.isoformat(),
+                    'confidence': detection.confidence_score,
+                    'location': detection.location,
+                    'camera_id': detection.camera_id,
+                    'thumbnail_path': detection.thumbnail_path,
+                })
+            
+            return result
                 
         except Exception as e:
             logger.error(f"Error retrieving unauthorized access attempts: {str(e)}")
@@ -566,7 +569,7 @@ class AuthenticationManager:
     def _log_auth_event(
         self, 
         auth_result: Dict[str, Any], 
-        db_session: Optional[Session] = None,
+        db_session: Session,
         is_unauthorized: bool = False,
         is_spoof_attempt: bool = False
     ) -> None:
@@ -575,7 +578,7 @@ class AuthenticationManager:
         
         Args:
             auth_result: Authentication result dictionary
-            db_session: Existing database session (or None to create a new one)
+            db_session: Existing database session
             is_unauthorized: Whether this was an unauthorized access attempt
             is_spoof_attempt: Whether this was a spoofing attempt
         """
@@ -583,9 +586,6 @@ class AuthenticationManager:
             return
             
         try:
-            close_session = db_session is None
-            db = db_session or self.db_session_factory()
-            
             # Determine event type
             if is_spoof_attempt:
                 event_type = EventType.ANOMALY_DETECTED
@@ -597,8 +597,6 @@ class AuthenticationManager:
                 severity = 1  # Warning
             else:
                 # Don't log authorized access as events to reduce noise
-                if close_session:
-                    db.close()
                 return
             
             # Create event
@@ -616,12 +614,8 @@ class AuthenticationManager:
                     'error': auth_result['error']
                 }
             )
-            db.add(event)
-            
-            # If using a provided session, let the caller handle the commit
-            if close_session:
-                db.commit()
-                db.close()
+            db_session.add(event)
+            db_session.commit()
                 
         except Exception as e:
             logger.error(f"Error logging authentication event: {str(e)}")
@@ -657,10 +651,13 @@ class AuthenticationManager:
             self.recent_auths[personnel_id].append(now)
             return True
             
-    def sync_database_with_recognizer(self) -> Dict[str, Any]:
+    def sync_database_with_recognizer(self, db: Session) -> Dict[str, Any]:
         """
         Synchronize the database personnel records with face recognizer embeddings.
         
+        Args:
+            db: Database session
+            
         Returns:
             Synchronization results
         """
@@ -674,48 +671,115 @@ class AuthenticationManager:
         }
         
         try:
-            with self.db_session_factory() as db:
-                # Get all active personnel
-                personnel = db.query(PersonnelRecord).filter(
-                    PersonnelRecord.is_active == True,
-                    PersonnelRecord.face_embedding != None  # Must have an embedding
-                ).all()
-                
-                result['db_count'] = len(personnel)
-                result['recognizer_count'] = len(self.face_recognizer.embeddings_db)
-                
-                # Add missing entries to recognizer
-                for person in personnel:
-                    if person.employee_id not in self.face_recognizer.embeddings_db:
-                        try:
-                            embedding = np.array(person.face_embedding)
-                            self.face_recognizer.add_to_database(person.employee_id, embedding)
-                            result['added'] += 1
-                        except Exception as e:
-                            result['errors'].append(f"Error adding {person.employee_id}: {str(e)}")
-                
-                # Remove entries from recognizer that aren't in database
-                db_ids = set(p.employee_id for p in personnel)
-                recognizer_ids = set(self.face_recognizer.embeddings_db.keys())
-                
-                for person_id in recognizer_ids - db_ids:
+            # Get all active personnel
+            personnel = db.query(PersonnelRecord).filter(
+                PersonnelRecord.is_active == True,
+                PersonnelRecord.face_embedding != None  # Must have an embedding
+            ).all()
+            
+            result['db_count'] = len(personnel)
+            result['recognizer_count'] = len(self.face_recognizer.embeddings_db)
+            
+            # Add missing entries to recognizer
+            for person in personnel:
+                if person.employee_id not in self.face_recognizer.embeddings_db:
                     try:
-                        self.face_recognizer.remove_from_database(person_id)
-                        result['removed'] += 1
+                        embedding = np.array(person.face_embedding)
+                        self.face_recognizer.add_to_database(person.employee_id, embedding)
+                        result['added'] += 1
                     except Exception as e:
-                        result['errors'].append(f"Error removing {person_id}: {str(e)}")
+                        result['errors'].append(f"Error adding {person.employee_id}: {str(e)}")
+            
+            # Remove entries from recognizer that aren't in database
+            db_ids = set(p.employee_id for p in personnel)
+            recognizer_ids = set(self.face_recognizer.embeddings_db.keys())
+            
+            for person_id in recognizer_ids - db_ids:
+                try:
+                    self.face_recognizer.remove_from_database(person_id)
+                    result['removed'] += 1
+                except Exception as e:
+                    result['errors'].append(f"Error removing {person_id}: {str(e)}")
+            
+            # Save the database
+            if result['added'] > 0 or result['removed'] > 0:
+                self.face_recognizer.save_embeddings_db(self.face_recognizer.db_path)
+            
+            if result['errors']:
+                result['success'] = False
                 
-                # Save the database
-                if result['added'] > 0 or result['removed'] > 0:
-                    self.face_recognizer.save_embeddings_db(self.face_recognizer.db_path)
-                
-                if result['errors']:
-                    result['success'] = False
-                    
-                return result
+            return result
                 
         except Exception as e:
             logger.error(f"Error synchronizing database: {str(e)}")
             result['success'] = False
             result['errors'].append(str(e))
             return result
+
+class AuthenticationManagerWrapper:
+    """Wrapper class for AuthenticationManager to avoid FastAPI typing issues."""
+    
+    def __init__(self, auth_manager):
+        self.auth_manager = auth_manager
+    
+    def register_personnel(self, db, face_image, employee_id, name, department, access_level, user_id):
+        """Wrapper for register_personnel to avoid AsyncSession type issues."""
+        return self.auth_manager.register_personnel(
+            db=db,
+            face_image=face_image,
+            employee_id=employee_id,
+            name=name,
+            department=department,
+            access_level=access_level,
+            user_id=user_id
+        )
+    
+    def authenticate_face(self, db, face_image, location, camera_id):
+        """Wrapper for authenticate_face to avoid AsyncSession type issues."""
+        return self.auth_manager.authenticate_face(
+            db=db,
+            face_image=face_image,
+            location=location,
+            camera_id=camera_id
+        )
+    
+    def update_access_level(self, db, employee_id, new_access_level, user_id):
+        """Wrapper for update_access_level to avoid AsyncSession type issues."""
+        return self.auth_manager.update_access_level(
+            db=db, 
+            employee_id=employee_id,
+            new_access_level=new_access_level,
+            user_id=user_id
+        )
+    
+    def deactivate_personnel(self, db, employee_id, user_id):
+        """Wrapper for deactivate_personnel to avoid AsyncSession type issues."""
+        return self.auth_manager.deactivate_personnel(
+            db=db,
+            employee_id=employee_id,
+            user_id=user_id
+        )
+    
+    def get_authentication_history(self, db, employee_id=None, start_time=None, end_time=None, location=None, limit=100):
+        """Wrapper for get_authentication_history to avoid AsyncSession type issues."""
+        return self.auth_manager.get_authentication_history(
+            db=db,
+            employee_id=employee_id,
+            start_time=start_time,
+            end_time=end_time,
+            location=location,
+            limit=limit
+        )
+    
+    def get_unauthorized_access_attempts(self, db, start_time=None, location=None, limit=100):
+        """Wrapper for get_unauthorized_access_attempts to avoid AsyncSession type issues."""
+        return self.auth_manager.get_unauthorized_access_attempts(
+            db=db,
+            start_time=start_time,
+            location=location,
+            limit=limit
+        )
+    
+    def sync_database_with_recognizer(self, db):
+        """Wrapper for sync_database_with_recognizer to avoid AsyncSession type issues."""
+        return self.auth_manager.sync_database_with_recognizer(db=db)

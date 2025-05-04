@@ -23,9 +23,9 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     description="AI-powered surveillance system for warehouse management with computer vision capabilities",
     version="0.1.0",
-    docs_url=f"{settings.API_V1_PREFIX}/docs",
-    redoc_url=f"{settings.API_V1_PREFIX}/redoc",
-    openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
+    docs_url="/docs",  # Make docs available at root path
+    redoc_url="/redoc",  # Make redoc available at root path
+    openapi_url="/openapi.json",  # Make OpenAPI schema available at root path
 )
 
 # Configure CORS

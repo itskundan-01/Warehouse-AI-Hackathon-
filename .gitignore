@@ -56,6 +56,9 @@ Thumbs.db
 data/db_backups/
 models/*
 !models/facial/.gitkeep
+!models/vehicle/.gitkeep
+!models/gunny/.gitkeep
+!models/contextual/.gitkeep
 logs/
 *.log
 
@@ -106,6 +109,9 @@ creds/
 config/**/secrets/
 *.env.local
 *.env.*.local
+.env.development
+.env.production
+.env.test
 
 # Documentation artifacts
 _build/
@@ -165,3 +171,9 @@ tsconfig.tsbuildinfo
 # Jupyter
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
+
+# API keys and sensitive configuration
+*_api_key.txt
+*_credentials.json
+*_secret.json
+auth_config.json

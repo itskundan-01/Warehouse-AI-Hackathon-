@@ -9,9 +9,25 @@ import uuid
 from sqlalchemy import desc, or_, and_
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
 
 from . import models
 from . import AsyncSessionLocal
+
+# Custom dependency that avoids type issues
+def db_dependency():
+    """
+    Dependency that yields a database session without explicit AsyncSession type annotation.
+    This avoids FastAPI's issue with AsyncSession in response models.
+    """
+    async def _get_session() -> Any:
+        async with AsyncSessionLocal() as session:
+            try:
+                yield session
+            finally:
+                await session.close()
+    
+    return Depends(_get_session)
 
 # Database dependency for FastAPI routes
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
