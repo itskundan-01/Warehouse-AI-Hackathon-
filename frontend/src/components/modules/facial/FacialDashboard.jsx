@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import FaceCapture from './FaceCapture';
-import FaceRecognition from './FaceRecognition';
-import FaceRegistration from './FaceRegistration';
+import FaceCapture from './FaceCapture/FaceCapture';
+import FaceRecognition from './FaceRecognition/FaceRecognition';
+import FaceRegistration from './FaceRegistration/FaceRegistration';
+import FaceVerification from './FaceVerification/FaceVerification';
 
 /**
  * Main dashboard component for the facial recognition module
@@ -36,6 +37,8 @@ const FacialDashboard = () => {
         return <FaceCapture />;
       case 'registration':
         return <FaceRegistration />;
+      case 'verification':
+        return <FaceVerification />;
       case 'recognition':
       default:
         return <FaceRecognition data={recognitionData} loading={loading} />;
@@ -54,16 +57,22 @@ const FacialDashboard = () => {
           Recognition
         </button>
         <button 
-          className={`tab ${activeTab === 'capture' ? 'active' : ''}`}
-          onClick={() => setActiveTab('capture')}
+          className={`tab ${activeTab === 'verification' ? 'active' : ''}`}
+          onClick={() => setActiveTab('verification')}
         >
-          Capture
+          Verification
         </button>
         <button 
           className={`tab ${activeTab === 'registration' ? 'active' : ''}`}
           onClick={() => setActiveTab('registration')}
         >
           Registration
+        </button>
+        <button 
+          className={`tab ${activeTab === 'capture' ? 'active' : ''}`}
+          onClick={() => setActiveTab('capture')}
+        >
+          Capture
         </button>
       </div>
       

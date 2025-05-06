@@ -3,40 +3,34 @@ import {
   Box,
   Typography,
   Paper,
-  TextField,
-  Button,
   Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   CircularProgress,
-  Alert,
-  Card,
-  CardMedia
+  Alert
 } from '@mui/material';
-import AddAPhotoIcon from '@mui/icons-material/AddAPhoto';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import RegistrationForm from './RegistrationForm';
+import FaceCapture from '../FaceCapture/FaceCapture';
+import facialService from '../../../../services/api/facialService';
 
 /**
  * Face Registration Component for adding new personnel to the system
  */
 const FaceRegistration = () => {
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [capturedImage, setCapturedImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  const handleImageSelect = (imageData) => {
-    setSelectedImage(imageData);
+  const handleImageCapture = (imageData) => {
+    // Extract base64 data (remove prefix like "data:image/jpeg;base64,")
+    const base64Data = imageData.split(',')[1];
+    setCapturedImage(base64Data);
     setError('');
     setSuccess(false);
   };
 
   const handleRegister = async (formData) => {
-    if (!selectedImage) {
-      setError('Please capture or upload a face image first');
+    if (!capturedImage) {
+      setError('Please capture a face image first');
       return;
     }
 
@@ -44,25 +38,36 @@ const FaceRegistration = () => {
     setError('');
     
     try {
-      // Simulate API call - in real app this would send data to the backend
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Prepare data for API call
+      const registrationData = {
+        employee_id: formData.employeeId,
+        name: formData.name,
+        department: formData.department,
+        access_level: parseInt(formData.accessLevel, 10),
+        face_image_base64: capturedImage
+      };
       
-      // Simulate success
+      // Call the API service
+      await facialService.registerPersonnel(registrationData);
+      
+      // Handle success
       setSuccess(true);
-      setSelectedImage(null);
+      setCapturedImage(null);
       
     } catch (err) {
-      setError('Registration failed. Please try again.');
+      setError(`Registration failed: ${err.message || 'Unknown error'}`);
       console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    setSelectedImage(null);
-    setSuccess(false);
+  const handleCaptureComplete = (base64Image) => {
+    // Extract base64 data without the prefix
+    const base64Data = base64Image.split(',')[1];
+    setCapturedImage(base64Data);
     setError('');
+    setSuccess(false);
   };
 
   return (
@@ -96,52 +101,17 @@ const FaceRegistration = () => {
             }}
           >
             <Typography variant="subtitle1" gutterBottom>
-              Face Image
+              Capture Face Image
             </Typography>
             
-            {selectedImage ? (
-              <>
-                <Card sx={{ width: '100%', mb: 2 }}>
-                  <CardMedia
-                    component="img"
-                    image={selectedImage}
-                    alt="Selected face"
-                    sx={{ 
-                      maxHeight: 300, 
-                      objectFit: 'contain' 
-                    }}
-                  />
-                </Card>
-                <Button 
-                  variant="outlined" 
-                  onClick={handleCancel}
-                  sx={{ mt: 1 }}
-                >
-                  Change Image
-                </Button>
-              </>
-            ) : (
-              <Box
-                sx={{
-                  width: '100%',
-                  height: 250,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  border: '1px dashed #ccc',
-                  borderRadius: 1
-                }}
-              >
-                <AddAPhotoIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                <Button 
-                  variant="contained"
-                  onClick={() => handleImageSelect('https://i.pravatar.cc/300')} // For demo, use a placeholder image
-                >
-                  Capture Face Image
-                </Button>
-              </Box>
-            )}
+            <Box sx={{ width: '100%', mb: 2 }}>
+              {/* Use the FaceCapture component with a callback */}
+              <FaceCapture 
+                onImageCapture={handleCaptureComplete}
+                showPreview={true}
+                inlineDisplay={true}
+              />
+            </Box>
             
             <Typography variant="body2" color="textSecondary" sx={{ mt: 2, textAlign: 'center' }}>
               Ensure the face is well-lit and directly facing the camera for best recognition results.
@@ -153,7 +123,7 @@ const FaceRegistration = () => {
           <RegistrationForm 
             onSubmit={handleRegister} 
             loading={loading} 
-            disabled={!selectedImage || loading}
+            disabled={!capturedImage || loading}
           />
         </Grid>
       </Grid>

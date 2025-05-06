@@ -21,9 +21,36 @@ import time
 from datetime import datetime
 from scipy.spatial.distance import cosine
 import subprocess
+import importlib.util
 
 # Configure logger
 logger = logging.getLogger(__name__)
+
+# Fix for MTCNN import issues
+def import_mtcnn():
+    """Import MTCNN safely with proper error handling."""
+    try:
+        # First try normal import
+        from mtcnn import MTCNN
+        return MTCNN
+    except ImportError as e:
+        # If that fails, try to find the package in site-packages
+        mtcnn_spec = importlib.util.find_spec('mtcnn')
+        if mtcnn_spec:
+            logger.info(f"Found MTCNN at {mtcnn_spec.origin}")
+            # Try again with full path
+            try:
+                mtcnn_path = os.path.dirname(mtcnn_spec.origin)
+                if mtcnn_path not in sys.path:
+                    sys.path.append(mtcnn_path)
+                from mtcnn import MTCNN
+                return MTCNN
+            except ImportError as e2:
+                logger.error(f"Failed to import MTCNN after finding spec: {e2}")
+                return None
+        else:
+            logger.error(f"MTCNN package not found: {e}")
+            return None
 
 class FaceRecognizer:
     """Face recognition implementation using ArcFace embeddings."""
@@ -55,6 +82,7 @@ class FaceRecognizer:
         self.model_path = None
         self.embedding_size = 512  # Default for ArcFace
         self.db_path = db_path
+        
         self.embeddings_db = {}  # Dictionary of {id: embedding}
         self.opencv_face_detector = None  # OpenCV backup detector
         
@@ -66,6 +94,7 @@ class FaceRecognizer:
         if model_path is None:
             # Use models directory relative to project root
             models_dir = Path(__file__).parent.parent.parent.parent / "models" / "facial"
+            os.makedirs(models_dir, exist_ok=True)
             
             if self.method == "arcface":
                 self.model_path = str(models_dir / "arcface_resnet100.onnx")
@@ -102,7 +131,7 @@ class FaceRecognizer:
         """Initialize the selected face recognition model."""
         # Define paths
         models_dir = Path(self.model_path).parent if self.model_path else None
-        script_path = Path(__file__).parent.parent.parent.parent / "scripts" / "download_models.py"
+        script_path = Path(__file__).parent.parent.parent.parent / "scripts" / "download_arcface.py"
 
         # Handle missing model file generically
         def handle_missing_model(method_name):
@@ -112,8 +141,8 @@ class FaceRecognizer:
             if os.path.exists(script_path):
                 try:
                     logger.info(f"Attempting to download the missing {method_name} model file...")
-                    subprocess.run([sys.executable, str(script_path), "--models", method_name.lower()], check=True)
-                    logger.info("Model downloaded successfully.")
+                    subprocess.run([sys.executable, str(script_path)], check=True)
+                    logger.info("Model download script execution completed.")
                     
                     # Check if download was successful
                     if not os.path.exists(self.model_path):
@@ -123,7 +152,7 @@ class FaceRecognizer:
                     logger.error(f"Failed to download the {method_name} model file: {e}")
                     instructions = (
                         f"\nTo manually download the model:\n"
-                        f"1. Run: python {script_path} --models {method_name.lower()}\n"
+                        f"1. Run: python {script_path}\n"
                         f"2. Ensure the file is saved to: {models_dir}\n"
                     )
                     logger.info(instructions)
@@ -132,7 +161,7 @@ class FaceRecognizer:
                 instructions = (
                     f"\nThe model download script was not found at {script_path}. To resolve this issue:\n"
                     f"1. Ensure the scripts directory exists in the project root\n"
-                    f"2. Create the download_models.py script if missing\n"
+                    f"2. Create the download_arcface.py script if missing\n"
                     f"3. Manually download the {method_name} model to: {models_dir}\n"
                 )
                 logger.error(instructions)
@@ -153,10 +182,31 @@ class FaceRecognizer:
                     handle_missing_model("ArcFace")
                     
                 # Create an ONNX Runtime session
-                providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if self.enable_gpu else ['CPUExecutionProvider']
-                self.model = onnxruntime.InferenceSession(self.model_path, providers=providers)
-                self.embedding_size = 512
-                
+                logger.info(f"Loading ArcFace model from {self.model_path}")
+                try:
+                    providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if self.enable_gpu else ['CPUExecutionProvider']
+                    self.model = onnxruntime.InferenceSession(self.model_path, providers=providers)
+                    # Try to get input details to validate the model format
+                    input_details = self.model.get_inputs()
+                    logger.info(f"Model loaded successfully. Input shape: {input_details[0].shape}")
+                    self.embedding_size = 512
+                except Exception as model_error:
+                    # The model might have a different format than expected
+                    logger.error(f"Error loading model in standard format: {str(model_error)}")
+                    logger.info("Attempting to use the model with InsightFace...")
+                    self.method = "insightface"
+                    
+                    # Try using InsightFace directly with the downloaded model
+                    try:
+                        from insightface.app import FaceAnalysis
+                        self.model = FaceAnalysis(name="buffalo_l", providers=['CPUExecutionProvider'])
+                        self.model.prepare(ctx_id=-1 if not self.enable_gpu else 0)
+                        logger.info("Successfully switched to InsightFace model")
+                    except ImportError:
+                        logger.error("InsightFace package not installed. Falling back to OpenCV")
+                        self.method = "opencv"
+                        self._initialize_opencv_detector()
+                    
             except ImportError:
                 logger.error("ONNX Runtime not installed. Required for ArcFace")
                 raise ImportError("ONNX Runtime required but not installed. Install it with 'pip install onnxruntime'")
@@ -234,9 +284,14 @@ class FaceRecognizer:
                 img = np.expand_dims(img, axis=0)  # Add batch dimension
                 
                 # Run inference
-                input_name = self.model.get_inputs()[0].name
-                outputs = self.model.run(None, {input_name: img})
-                embedding = outputs[0][0]
+                try:
+                    input_name = self.model.get_inputs()[0].name
+                    outputs = self.model.run(None, {input_name: img})
+                    embedding = outputs[0][0]
+                except Exception as inference_error:
+                    logger.error(f"Error during inference: {str(inference_error)}")
+                    # Fallback to OpenCV embedding if model inference fails
+                    return self._generate_opencv_embedding(face_image)
                 
             elif self.method == "insightface":
                 # InsightFace preprocessing and embedding generation
@@ -448,8 +503,8 @@ class FaceRecognizer:
         try:
             if self.method == "arcface":
                 # Use MTCNN or another face detector compatible with ArcFace
-                try:
-                    from mtcnn import MTCNN
+                MTCNN = import_mtcnn()
+                if MTCNN:
                     detector = MTCNN()
                     detections = detector.detect_faces(rgb_img)
                     
@@ -477,7 +532,7 @@ class FaceRecognizer:
                             'landmarks': face_landmarks,
                             'aligned_face': self._align_face(img, box, face_landmarks)
                         })
-                except ImportError:
+                else:
                     logger.warning("MTCNN not installed, falling back to OpenCV face detector")
                     # Fall back to OpenCV cascade
                     faces = self._detect_faces_opencv(img, min_face_size)
@@ -510,8 +565,8 @@ class FaceRecognizer:
                     
             elif self.method == "facenet":
                 # Similar to ArcFace case, use MTCNN which is compatible with FaceNet
-                try:
-                    from mtcnn import MTCNN
+                MTCNN = import_mtcnn()
+                if MTCNN:
                     detector = MTCNN()
                     detections = detector.detect_faces(rgb_img)
                     
@@ -539,7 +594,7 @@ class FaceRecognizer:
                             'landmarks': face_landmarks,
                             'aligned_face': self._align_face(img, box, face_landmarks)
                         })
-                except ImportError:
+                else:
                     logger.warning("MTCNN not installed, falling back to OpenCV face detector")
                     # Fall back to OpenCV cascade
                     faces = self._detect_faces_opencv(img, min_face_size)

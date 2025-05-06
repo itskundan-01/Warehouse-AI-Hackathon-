@@ -4,6 +4,8 @@ import FacialDashboard from './FacialDashboard';
 export { default as FaceCapture } from './FaceCapture';
 export { default as FaceRecognition } from './FaceRecognition';
 export { default as FaceRegistration } from './FaceRegistration';
+export { default as FaceVerification } from './FaceVerification';
+export { default as PersonnelVerificationPortal } from './PersonnelVerificationPortal';
 export { default as UserAuth } from './UserAuth';
 
 // Export the main dashboard as default
