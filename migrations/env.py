@@ -22,7 +22,7 @@ load_dotenv()
 config = context.config
 
 # Set the SQLAlchemy URL from environment variable
-db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/warehousevision")
+db_url = os.getenv("DATABASE_URL", "mysql+pymysql://root:your_secure_password@localhost:3306/warehouse_vision")
 config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.

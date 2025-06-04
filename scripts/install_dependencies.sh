@@ -60,12 +60,7 @@ install_package "pytest>=7.3.1"
 install_package "pytest-cov>=4.1.0"
 install_package "httpx>=0.24.1"
 
-# Step 6: ELK stack integration
-echo "==== Installing ELK stack integration ===="
-install_package "elasticsearch>=8.8.0"
-install_package "python-logstash>=0.4.8"
-
-# Step 7: Computer vision packages (optional)
+# Step 6: Computer vision packages (optional)
 echo "==== Installing computer vision packages (may be skipped) ===="
 echo "Note: These packages are large and may be installed later when needed."
 echo "Attempting to install OpenCV (this may take some time)..."
@@ -73,6 +68,7 @@ pip install --timeout 600 opencv-python
 if [ $? -ne 0 ]; then
     echo "Warning: OpenCV installation failed. You can try installing it later with:"
     echo "pip install --timeout 600 opencv-python"
+    echo "On Mac, you may need: brew install opencv"
 else
     echo "Successfully installed OpenCV."
 fi

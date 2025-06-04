@@ -78,11 +78,6 @@ logs/
 postgres-data/
 data/elasticsearch/
 
-# Docker
-.docker/
-docker-volume/
-docker-volumes/
-
 # Large media files that should be stored with Git LFS instead
 *.zip
 *.tar.gz
@@ -148,9 +143,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .npm/
-
-# Kubernetes secrets
-deployment/kubernetes/**/secrets/
 
 # Misc application files
 *.pid

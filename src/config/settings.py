@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     
     # CORS settings
-    ALLOWED_ORIGINS: List[str] = ["http://localhost", "http://localhost:3000"]
+    ALLOWED_ORIGINS: Union[str, List[str]] = "http://localhost,http://localhost:3000"
     ALLOWED_HOSTS: str = "localhost,127.0.0.1"
     
     # Database settings
@@ -76,6 +76,22 @@ class Settings(BaseSettings):
     MAX_WORKERS: str = "4"
     WORKER_TIMEOUT: str = "120"
     
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def split_allowed_origins(cls, v):
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if v.startswith("[") and v.endswith("]"):
+                import ast
+                try:
+                    return ast.literal_eval(v)
+                except Exception:
+                    return [s.strip() for s in v[1:-1].split(",") if s.strip()]
+            return [s.strip() for s in v.split(",") if s.strip()]
+        return v
+
     class Config:
         """Pydantic config for Settings class."""
         env_file = ".env"

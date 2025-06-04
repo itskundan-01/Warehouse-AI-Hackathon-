@@ -57,7 +57,6 @@ warehousevision-ai/
 ├── notebooks/                      # Jupyter notebooks for experiments
 ├── config/                         # Configuration files
 ├── requirements.txt                # Python dependencies
-├── docker-compose.yml              # Docker Compose configuration
 └── README.md                       # Project README
 ```
 
@@ -66,11 +65,11 @@ warehousevision-ai/
 ### Prerequisites
 
 - Python 3.10+
-- Docker and Docker Compose
-- NVIDIA GPU with CUDA support (recommended)
-- OpenCV dependencies
+- Node.js (for frontend)
+- MySQL (or compatible database)
+- OpenCV dependencies (for computer vision features)
 
-### Installation
+### Installation (Backend)
 
 1. Clone the repository
    ```
@@ -92,13 +91,46 @@ warehousevision-ai/
 4. Set up environment variables
    ```
    cp .env.example .env
-   # Edit .env file with your configuration
+   # Edit .env file with your configuration (set MySQL, Redis, RabbitMQ, etc. to your local or cloud instances)
    ```
 
-5. Start the services
+5. Run database migrations (if needed)
    ```
-   docker-compose up -d
+   alembic upgrade head
    ```
+
+6. Start the backend API server
+   ```
+   python -m src.main
+   # or
+   python src/main.py
+   ```
+
+### Installation (Frontend)
+
+1. Go to the frontend directory
+   ```
+   cd frontend
+   ```
+
+2. Install frontend dependencies
+   ```
+   npm install
+   # or
+   yarn install
+   ```
+
+3. Start the frontend development server
+   ```
+   npm start
+   # or
+   yarn start
+   ```
+
+### Notes
+- Make sure your MySQL, Redis, and RabbitMQ services are running locally or update the .env to point to remote/cloud services.
+- Remove or ignore any Docker/Kubernetes/ELK stack instructions/files. This project now runs directly on your system.
+- For Mac users: If you encounter issues with OpenCV or other native dependencies, refer to the official documentation for platform-specific installation steps.
 
 ### Running the Application
 
