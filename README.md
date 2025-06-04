@@ -66,7 +66,7 @@ warehousevision-ai/
 
 - Python 3.10+
 - Node.js (for frontend)
-- MySQL (or compatible database)
+- MongoDB (or compatible database)
 - OpenCV dependencies (for computer vision features)
 
 ### Installation (Backend)
@@ -91,7 +91,7 @@ warehousevision-ai/
 4. Set up environment variables
    ```
    cp .env.example .env
-   # Edit .env file with your configuration (set MySQL, Redis, RabbitMQ, etc. to your local or cloud instances)
+   # Edit .env file with your configuration (set MongoDB, Redis, RabbitMQ, etc. to your local or cloud instances)
    ```
 
 5. Run database migrations (if needed)
@@ -128,7 +128,7 @@ warehousevision-ai/
    ```
 
 ### Notes
-- Make sure your MySQL, Redis, and RabbitMQ services are running locally or update the .env to point to remote/cloud services.
+- Make sure your MongoDB, Redis, and RabbitMQ services are running locally or update the .env to point to remote/cloud services.
 - Remove or ignore any Docker/Kubernetes/ELK stack instructions/files. This project now runs directly on your system.
 - For Mac users: If you encounter issues with OpenCV or other native dependencies, refer to the official documentation for platform-specific installation steps.
 
