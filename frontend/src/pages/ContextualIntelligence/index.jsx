@@ -30,7 +30,8 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  DialogTitle
+  DialogTitle,
+  Avatar
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -47,7 +48,9 @@ import {
   Error as ErrorIcon,
   Warning as WarningIcon,
   Info as InfoIcon,
-  Article as ArticleIcon
+  Article as ArticleIcon,
+  Psychology as PsychologyIcon,
+  Analytics as AnalyticsIcon
 } from '@mui/icons-material';
 
 import {
@@ -86,6 +89,7 @@ const ContextualIntelligencePage = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [openVideoDialog, setOpenVideoDialog] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [dateRange, setDateRange] = useState({
     start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days ago
     end: new Date().toISOString().split('T')[0] // today
@@ -107,6 +111,8 @@ const ContextualIntelligencePage = () => {
 
   // Handle search submission
   const handleSearch = () => {
+    setSearchLoading(true);
+    
     // Create search parameters
     const params = {
       keyword: searchQuery,
@@ -116,7 +122,9 @@ const ContextualIntelligencePage = () => {
       endTime: dateRange.end ? new Date(dateRange.end).toISOString() : undefined,
     };
     
-    dispatch(fetchInsights(params));
+    dispatch(fetchInsights(params)).finally(() => {
+      setSearchLoading(false);
+    });
   };
 
   // Handle video analysis
@@ -199,51 +207,146 @@ const ContextualIntelligencePage = () => {
   ];
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Contextual Intelligence
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary" paragraph>
-          Analyze video feeds for patterns, anomalies, and contextual insights across the warehouse.
-        </Typography>
+    <Container maxWidth="xl" className="fade-in">
+      {/* Modern Header Section */}
+      <Box className="modern-header" sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Avatar 
+            sx={{ 
+              width: 60, 
+              height: 60, 
+              mr: 3,
+              bgcolor: 'primary.main',
+              fontSize: '1.5rem'
+            }}
+          >
+            <PsychologyIcon fontSize="inherit" />
+          </Avatar>
+          <Box>
+            <Typography 
+              variant="h3" 
+              component="h1" 
+              sx={{ 
+                fontWeight: 700,
+                color: 'primary.main',
+                mb: 1
+              }}
+            >
+              Contextual Intelligence
+            </Typography>
+            <Typography variant="h6" color="text.secondary">
+              AI-powered video analysis and intelligent pattern recognition
+            </Typography>
+          </Box>
+        </Box>
       </Box>
 
       {/* Tabs for different sections */}
-      <Paper sx={{ mb: 4 }}>
-        <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange} 
-          indicatorColor="primary"
-          textColor="primary"
-          variant="fullWidth"
-        >
-          <Tab icon={<VideoIcon />} label="Video Analysis" />
-          <Tab icon={<SearchIcon />} label="Search & Query" />
-          <Tab icon={<TrendingUpIcon />} label="Predictive Analytics" />
-          <Tab icon={<AssessmentIcon />} label="Reports" />
-        </Tabs>
+      <Paper 
+        className="modern-card glass-effect" 
+        elevation={0} 
+        sx={{ 
+          mb: 4,
+          borderRadius: 3,
+          overflow: 'hidden'
+        }}
+      >
+        <Box sx={{ 
+          borderBottom: 1, 
+          borderColor: 'divider',
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange} 
+            indicatorColor="primary"
+            textColor="primary"
+            variant="fullWidth"
+            sx={{
+              '& .MuiTab-root': {
+                py: 3,
+                fontSize: '1rem',
+                fontWeight: 600,
+                minHeight: 'auto',
+                '&.Mui-selected': {
+                  background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+                }
+              }
+            }}
+          >
+            <Tab 
+              icon={<VideoIcon />} 
+              label="Video Analysis" 
+              iconPosition="start"
+              sx={{ gap: 1 }}
+            />
+            <Tab 
+              icon={<SearchIcon />} 
+              label="Search & Query" 
+              iconPosition="start"
+              sx={{ gap: 1 }}
+            />
+            <Tab 
+              icon={<TrendingUpIcon />} 
+              label="Predictive Analytics" 
+              iconPosition="start"
+              sx={{ gap: 1 }}
+            />
+            <Tab 
+              icon={<AssessmentIcon />} 
+              label="Reports" 
+              iconPosition="start"
+              sx={{ gap: 1 }}
+            />
+          </Tabs>
+        </Box>
       </Paper>
 
       {/* Video Analysis tab */}
-      <TabPanel value={tabValue} index={0}>
+        <TabPanel value={tabValue} index={0}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={8}>
-            <Paper sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper 
+              className="modern-card glass-effect" 
+              elevation={0}
+              sx={{ 
+                p: 3, 
+                height: '100%',
+                borderRadius: 3,
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.1)'
+                }
+              }}
+            >
+              <Typography variant="h6" gutterBottom sx={{ 
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}>
                 Real-time Video Feed
               </Typography>
-              <Divider sx={{ mb: 3 }} />
+              <Divider sx={{ mb: 3, opacity: 0.6 }} />
 
               <Box 
                 sx={{ 
                   height: 400, 
-                  bgcolor: '#000',
+                  background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
                   display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'center',
                   mb: 2,
-                  position: 'relative'
+                  position: 'relative',
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  border: '2px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: 'inset 0 0 20px rgba(0,0,0,0.1)'
                 }}
               >
                 {isPlaying ? (
@@ -298,13 +401,29 @@ const ContextualIntelligencePage = () => {
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
-                    <InputLabel id="video-source-label">Video Source</InputLabel>
+                    <InputLabel id="video-source-label" sx={{ color: 'primary.main' }}>
+                      Video Source
+                    </InputLabel>
                     <Select
                       labelId="video-source-label"
                       value={videoSource}
                       onChange={(e) => setVideoSource(e.target.value)}
                       label="Video Source"
                       disabled={isPlaying || isAnalyzing}
+                      sx={{
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 2,
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          backdropFilter: 'blur(10px)',
+                          '&:hover': {
+                            background: 'rgba(255, 255, 255, 0.9)',
+                          },
+                          '&.Mui-focused': {
+                            background: 'rgba(255, 255, 255, 0.95)',
+                          }
+                        }
+                      }}
                     >
                       <MenuItem value="">
                         <em>Select a camera</em>
@@ -326,6 +445,21 @@ const ContextualIntelligencePage = () => {
                       startIcon={isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
                       disabled={!videoSource || isAnalyzing}
                       fullWidth
+                      sx={{
+                        borderRadius: 2,
+                        py: 1.5,
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+                        },
+                        '&:disabled': {
+                          opacity: 0.6
+                        }
+                      }}
                     >
                       {isPlaying ? 'Stop Stream' : 'Start Stream'}
                     </Button>
@@ -333,9 +467,24 @@ const ContextualIntelligencePage = () => {
                       variant="contained"
                       color="secondary"
                       onClick={handleAnalyzeVideo}
-                      startIcon={<TuneIcon />}
-                      disabled={!videoSource || !isPlaying || isAnalyzing}
+                      startIcon={<AnalyticsIcon />}
+                      disabled={!isPlaying || isAnalyzing}
                       fullWidth
+                      sx={{
+                        borderRadius: 2,
+                        py: 1.5,
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+                        },
+                        '&:disabled': {
+                          opacity: 0.6
+                        }
+                      }}
                     >
                       Analyze
                     </Button>
@@ -346,11 +495,32 @@ const ContextualIntelligencePage = () => {
           </Grid>
 
           <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper 
+              className="modern-card glass-effect" 
+              elevation={0}
+              sx={{ 
+                p: 3, 
+                height: '100%',
+                borderRadius: 3,
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.1)'
+                }
+              }}
+            >
+              <Typography variant="h6" gutterBottom sx={{ 
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}>
                 Recent Insights
               </Typography>
-              <Divider sx={{ mb: 3 }} />
+              <Divider sx={{ mb: 3, opacity: 0.6 }} />
 
               {insights.loading ? (
                 <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />
@@ -364,9 +534,17 @@ const ContextualIntelligencePage = () => {
                     <ListItem 
                       key={insight.id} 
                       sx={{ 
-                        mb: 1, 
-                        bgcolor: 'rgba(0,0,0,0.03)', 
-                        borderRadius: 1
+                        mb: 2, 
+                        background: 'rgba(255, 255, 255, 0.7)',
+                        backdropFilter: 'blur(5px)',
+                        borderRadius: 2,
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          background: 'rgba(255, 255, 255, 0.9)',
+                          transform: 'translateX(4px)',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        }
                       }}
                     >
                       <ListItemIcon>
@@ -395,11 +573,28 @@ const ContextualIntelligencePage = () => {
 
       {/* Search & Query tab */}
       <TabPanel value={tabValue} index={1}>
-        <Paper sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
+        <Paper 
+          className="modern-card glass-effect" 
+          elevation={0}
+          sx={{ 
+            p: 3, 
+            mb: 4,
+            borderRadius: 3,
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            transition: 'all 0.3s ease-in-out'
+          }}
+        >
+          <Typography variant="h6" gutterBottom sx={{ 
+            fontWeight: 600,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
             Search Events & Insights
           </Typography>
-          <Divider sx={{ mb: 3 }} />
+          <Divider sx={{ mb: 3, opacity: 0.6 }} />
 
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12}>
@@ -409,24 +604,64 @@ const ContextualIntelligencePage = () => {
                 fullWidth
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Enter keywords to search events and insights..."
+                placeholder="Search events, people, objects, activities..."
                 InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={handleSearch} disabled={searchLoading}>
+                        {searchLoading ? <CircularProgress size={20} /> : <SearchIcon />}
+                      </IconButton>
                     </InputAdornment>
                   ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease-in-out',
+                    '&:hover': {
+                      background: 'rgba(255, 255, 255, 0.9)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                    },
+                    '&.Mui-focused': {
+                      background: 'rgba(255, 255, 255, 0.95)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.15)'
+                    }
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: 'primary.main',
+                    fontWeight: 500
+                  }
                 }}
               />
             </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel id="location-filter-label">Location</InputLabel>
+                <InputLabel id="location-filter-label" sx={{ color: 'primary.main', fontWeight: 500 }}>
+                  Location
+                </InputLabel>
                 <Select
                   labelId="location-filter-label"
                   value={selectedLocation}
                   onChange={(e) => setSelectedLocation(e.target.value)}
                   label="Location"
+                  sx={{
+                    borderRadius: 2,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      background: 'rgba(255, 255, 255, 0.8)',
+                      backdropFilter: 'blur(10px)',
+                      '&:hover': {
+                        background: 'rgba(255, 255, 255, 0.9)',
+                      },
+                      '&.Mui-focused': {
+                        background: 'rgba(255, 255, 255, 0.95)',
+                      }
+                    }
+                  }}
                 >
                   <MenuItem value="">All Locations</MenuItem>
                   {locationOptions.map(option => (
@@ -437,7 +672,9 @@ const ContextualIntelligencePage = () => {
             </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
-                <InputLabel id="event-type-filter-label">Event Type</InputLabel>
+                <InputLabel id="event-type-filter-label" sx={{ color: 'primary.main', fontWeight: 500 }}>
+                  Event Type
+                </InputLabel>
                 <Select
                   labelId="event-type-filter-label"
                   multiple
@@ -447,10 +684,33 @@ const ContextualIntelligencePage = () => {
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                       {selected.map((value) => (
-                        <Chip key={value} label={value} size="small" />
+                        <Chip 
+                          key={value} 
+                          label={value} 
+                          size="small" 
+                          sx={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white',
+                            fontWeight: 500
+                          }}
+                        />
                       ))}
                     </Box>
                   )}
+                  sx={{
+                    borderRadius: 2,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                      background: 'rgba(255, 255, 255, 0.8)',
+                      backdropFilter: 'blur(10px)',
+                      '&:hover': {
+                        background: 'rgba(255, 255, 255, 0.9)',
+                      },
+                      '&.Mui-focused': {
+                        background: 'rgba(255, 255, 255, 0.95)',
+                      }
+                    }
+                  }}
                 >
                   {eventTypeOptions.map(option => (
                     <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
@@ -466,6 +726,23 @@ const ContextualIntelligencePage = () => {
                 onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
                 InputLabelProps={{ shrink: true }}
                 fullWidth
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(10px)',
+                    '&:hover': {
+                      background: 'rgba(255, 255, 255, 0.9)',
+                    },
+                    '&.Mui-focused': {
+                      background: 'rgba(255, 255, 255, 0.95)',
+                    }
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: 'primary.main',
+                    fontWeight: 500
+                  }
+                }}
               />
             </Grid>
             <Grid item xs={6} md={2}>
@@ -476,6 +753,23 @@ const ContextualIntelligencePage = () => {
                 onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
                 InputLabelProps={{ shrink: true }}
                 fullWidth
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(10px)',
+                    '&:hover': {
+                      background: 'rgba(255, 255, 255, 0.9)',
+                    },
+                    '&.Mui-focused': {
+                      background: 'rgba(255, 255, 255, 0.95)',
+                    }
+                  },
+                  '& .MuiInputLabel-root': {
+                    color: 'primary.main',
+                    fontWeight: 500
+                  }
+                }}
               />
             </Grid>
             <Grid item xs={12}>
@@ -485,6 +779,21 @@ const ContextualIntelligencePage = () => {
                   color="primary"
                   startIcon={<SearchIcon />}
                   onClick={handleSearch}
+                  sx={{
+                    borderRadius: 3,
+                    py: 1.5,
+                    px: 4,
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                    transition: 'all 0.3s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 24px rgba(102, 126, 234, 0.6)',
+                      background: 'linear-gradient(135deg, #5a67d8 0%, #667eea 100%)',
+                    }
+                  }}
                 >
                   Search
                 </Button>
@@ -576,11 +885,27 @@ const ContextualIntelligencePage = () => {
 
       {/* Predictive Analytics tab */}
       <TabPanel value={tabValue} index={2}>
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
+        <Paper 
+          className="modern-card glass-effect" 
+          elevation={0}
+          sx={{ 
+            p: 3,
+            borderRadius: 3,
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            transition: 'all 0.3s ease-in-out'
+          }}
+        >
+          <Typography variant="h6" gutterBottom sx={{ 
+            fontWeight: 600,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
             Predictive Analytics
           </Typography>
-          <Divider sx={{ mb: 3 }} />
+          <Divider sx={{ mb: 3, opacity: 0.6 }} />
 
           {predictiveAnalytics.loading ? (
             <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />
@@ -589,22 +914,44 @@ const ContextualIntelligencePage = () => {
           ) : (
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
-                <Card sx={{ height: '100%' }}>
+                <Card 
+                  className="modern-card glass-effect"
+                  elevation={0}
+                  sx={{ 
+                    height: '100%',
+                    borderRadius: 3,
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 12px 40px rgba(0,0,0,0.1)'
+                    }
+                  }}
+                >
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ 
+                      fontWeight: 600,
+                      color: 'primary.main'
+                    }}>
                       Inventory Forecast
                     </Typography>
                     <Box sx={{ 
                       height: 300, 
-                      bgcolor: '#f5f5f5', 
-                      borderRadius: 1, 
+                      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                      borderRadius: 2, 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center',
-                      mb: 2 
+                      mb: 2,
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      boxShadow: 'inset 0 0 20px rgba(0,0,0,0.05)'
                     }}>
-                      <Typography variant="body1">
-                        Inventory forecast chart would be displayed here
+                      <Typography variant="body1" sx={{ 
+                        color: 'text.secondary',
+                        fontWeight: 500
+                      }}>
+                        📊 Inventory forecast chart would be displayed here
                       </Typography>
                     </Box>
                     <Typography variant="body2" color="text.secondary" align="right">
@@ -616,22 +963,44 @@ const ContextualIntelligencePage = () => {
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <Card sx={{ height: '100%' }}>
+                <Card 
+                  className="modern-card glass-effect"
+                  elevation={0}
+                  sx={{ 
+                    height: '100%',
+                    borderRadius: 3,
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 12px 40px rgba(0,0,0,0.1)'
+                    }
+                  }}
+                >
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ 
+                      fontWeight: 600,
+                      color: 'primary.main'
+                    }}>
                       Security Risk Forecast
                     </Typography>
                     <Box sx={{ 
                       height: 300, 
-                      bgcolor: '#f5f5f5', 
-                      borderRadius: 1, 
+                      background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+                      borderRadius: 2, 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center',
-                      mb: 2 
+                      mb: 2,
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      boxShadow: 'inset 0 0 20px rgba(0,0,0,0.05)'
                     }}>
-                      <Typography variant="body1">
-                        Security risk forecast chart would be displayed here
+                      <Typography variant="body1" sx={{ 
+                        color: 'text.secondary',
+                        fontWeight: 500
+                      }}>
+                        🔒 Security risk forecast chart would be displayed here
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -639,7 +1008,22 @@ const ContextualIntelligencePage = () => {
                         Model Accuracy: {predictiveAnalytics.model_accuracy ? 
                           `${Math.round(predictiveAnalytics.model_accuracy * 100)}%` : 'N/A'}
                       </Typography>
-                      <Button size="small" endIcon={<TuneIcon />}>
+                      <Button 
+                        size="small" 
+                        endIcon={<TuneIcon />}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 500,
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #5a67d8 0%, #667eea 100%)',
+                            transform: 'translateY(-1px)',
+                            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
+                          }
+                        }}
+                      >
                         Adjust Parameters
                       </Button>
                     </Box>
@@ -648,28 +1032,62 @@ const ContextualIntelligencePage = () => {
               </Grid>
 
               <Grid item xs={12}>
-                <Card>
+                <Card 
+                  className="modern-card glass-effect"
+                  elevation={0}
+                  sx={{ 
+                    borderRadius: 3,
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    backdropFilter: 'blur(10px)',
+                    transition: 'all 0.3s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: '0 12px 40px rgba(0,0,0,0.1)'
+                    }
+                  }}
+                >
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ 
+                      fontWeight: 600,
+                      color: 'primary.main'
+                    }}>
                       Vehicle Traffic Forecast
                     </Typography>
                     <Box sx={{ 
                       height: 300, 
-                      bgcolor: '#f5f5f5', 
-                      borderRadius: 1, 
+                      background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+                      borderRadius: 2, 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center',
-                      mb: 2 
+                      mb: 2,
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      boxShadow: 'inset 0 0 20px rgba(0,0,0,0.05)'
                     }}>
-                      <Typography variant="body1">
-                        Vehicle traffic forecast chart would be displayed here
+                      <Typography variant="body1" sx={{ 
+                        color: 'text.secondary',
+                        fontWeight: 500
+                      }}>
+                        🚛 Vehicle traffic forecast chart would be displayed here
                       </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <Button 
                         startIcon={<SaveIcon />}
                         size="small"
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          fontWeight: 500,
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          px: 3,
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #5a67d8 0%, #667eea 100%)',
+                            transform: 'translateY(-1px)',
+                            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
+                          }
+                        }}
                       >
                         Export Data
                       </Button>
@@ -684,18 +1102,53 @@ const ContextualIntelligencePage = () => {
 
       {/* Reports tab */}
       <TabPanel value={tabValue} index={3}>
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
+        <Paper 
+          className="modern-card glass-effect" 
+          elevation={0}
+          sx={{ 
+            p: 3,
+            borderRadius: 3,
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            transition: 'all 0.3s ease-in-out'
+          }}
+        >
+          <Typography variant="h6" gutterBottom sx={{ 
+            fontWeight: 600,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
             Generate Reports
           </Typography>
-          <Divider sx={{ mb: 3 }} />
+          <Divider sx={{ mb: 3, opacity: 0.6 }} />
 
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
-              <Card>
+              <Card 
+                className="modern-card glass-effect"
+                elevation={0}
+                sx={{
+                  borderRadius: 3,
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease-in-out',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.1)'
+                  }
+                }}
+              >
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Security Report
+                  <Typography variant="h6" gutterBottom sx={{ 
+                    fontWeight: 600,
+                    color: 'primary.main',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    🔐 Security Report
                   </Typography>
                   <Typography variant="body2" paragraph color="text.secondary">
                     Generate a comprehensive security report including unauthorized access attempts,
@@ -711,6 +1164,19 @@ const ContextualIntelligencePage = () => {
                         InputLabelProps={{ shrink: true }}
                         fullWidth
                         size="small"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 2,
+                            background: 'rgba(255, 255, 255, 0.8)',
+                            backdropFilter: 'blur(10px)',
+                            '&:hover': {
+                              background: 'rgba(255, 255, 255, 0.9)',
+                            },
+                            '&.Mui-focused': {
+                              background: 'rgba(255, 255, 255, 0.95)',
+                            }
+                          }
+                        }}
                       />
                     </Grid>
                     <Grid item xs={6}>
@@ -722,6 +1188,19 @@ const ContextualIntelligencePage = () => {
                         InputLabelProps={{ shrink: true }}
                         fullWidth
                         size="small"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: 2,
+                            background: 'rgba(255, 255, 255, 0.8)',
+                            backdropFilter: 'blur(10px)',
+                            '&:hover': {
+                              background: 'rgba(255, 255, 255, 0.9)',
+                            },
+                            '&.Mui-focused': {
+                              background: 'rgba(255, 255, 255, 0.95)',
+                            }
+                          }
+                        }}
                       />
                     </Grid>
                   </Grid>
@@ -733,6 +1212,21 @@ const ContextualIntelligencePage = () => {
                     startIcon={<ArticleIcon />}
                     onClick={() => handleGenerateReport('security')}
                     disabled={reportGeneration.loading}
+                    sx={{
+                      borderRadius: 2,
+                      py: 1.5,
+                      px: 3,
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+                      transition: 'all 0.3s ease-in-out',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 8px 24px rgba(102, 126, 234, 0.6)',
+                        background: 'linear-gradient(135deg, #5a67d8 0%, #667eea 100%)',
+                      }
+                    }}
                   >
                     Generate Report
                   </Button>
@@ -741,10 +1235,29 @@ const ContextualIntelligencePage = () => {
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <Card>
+              <Card 
+                className="modern-card glass-effect"
+                elevation={0}
+                sx={{
+                  borderRadius: 3,
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease-in-out',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.1)'
+                  }
+                }}
+              >
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Operational Report
+                  <Typography variant="h6" gutterBottom sx={{ 
+                    fontWeight: 600,
+                    color: 'secondary.main',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}>
+                    📊 Operational Report
                   </Typography>
                   <Typography variant="body2" paragraph color="text.secondary">
                     Generate an operational efficiency report including vehicle traffic analysis,
@@ -782,6 +1295,21 @@ const ContextualIntelligencePage = () => {
                     startIcon={<ArticleIcon />}
                     onClick={() => handleGenerateReport('operational')}
                     disabled={reportGeneration.loading}
+                    sx={{
+                      borderRadius: 2,
+                      py: 1.5,
+                      px: 3,
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                      boxShadow: '0 4px 12px rgba(245, 87, 108, 0.4)',
+                      transition: 'all 0.3s ease-in-out',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 8px 24px rgba(245, 87, 108, 0.6)',
+                        background: 'linear-gradient(135deg, #f5576c 0%, #f093fb 100%)',
+                      }
+                    }}
                   >
                     Generate Report
                   </Button>
@@ -835,9 +1363,23 @@ const ContextualIntelligencePage = () => {
         onClose={() => setOpenVideoDialog(false)}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+          }
+        }}
       >
-        <DialogTitle>
-          Event Details
+        <DialogTitle sx={{ 
+          fontWeight: 600,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent'
+        }}>
+          🔍 Event Details
         </DialogTitle>
         <DialogContent>
           {selectedEvent && (
@@ -865,14 +1407,20 @@ const ContextualIntelligencePage = () => {
               <Grid item xs={12}>
                 <Box sx={{ 
                   height: 300, 
-                  bgcolor: '#000', 
+                  background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+                  borderRadius: 2,
                   display: 'flex', 
                   justifyContent: 'center',
                   alignItems: 'center',
-                  mb: 2
+                  mb: 2,
+                  border: '2px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: 'inset 0 0 20px rgba(0,0,0,0.1)'
                 }}>
-                  <Typography variant="body1" color="#fff">
-                    Video playback would appear here
+                  <Typography variant="body1" sx={{ 
+                    color: '#fff',
+                    fontWeight: 500
+                  }}>
+                    🎥 Video playback would appear here
                   </Typography>
                 </Box>
               </Grid>
@@ -945,12 +1493,40 @@ const ContextualIntelligencePage = () => {
             </Grid>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenVideoDialog(false)}>Close</Button>
+        <DialogActions sx={{ p: 3, background: 'rgba(255, 255, 255, 0.5)' }}>
+          <Button 
+            onClick={() => setOpenVideoDialog(false)}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 500,
+              px: 3,
+              color: 'text.secondary',
+              '&:hover': {
+                background: 'rgba(0, 0, 0, 0.04)',
+              }
+            }}
+          >
+            Close
+          </Button>
           <Button 
             variant="contained" 
             onClick={() => setOpenVideoDialog(false)}
-            color="primary"
+            sx={{
+              borderRadius: 2,
+              py: 1,
+              px: 3,
+              fontWeight: 600,
+              textTransform: 'none',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-1px)',
+                boxShadow: '0 6px 20px rgba(102, 126, 234, 0.6)',
+                background: 'linear-gradient(135deg, #5a67d8 0%, #667eea 100%)',
+              }
+            }}
           >
             Take Action
           </Button>

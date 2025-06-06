@@ -9,8 +9,8 @@ import authService from '../../services/api/authService';
 
 // Initial state
 const initialState = {
-  isAuthenticated: false,
-  user: null,
+  isAuthenticated: !!localStorage.getItem('token'), // Check token on init
+  user: JSON.parse(localStorage.getItem('user')) || null, // Restore user data
   loading: false,
   error: null,
   token: localStorage.getItem('token') || null
@@ -27,6 +27,7 @@ export const login = createAsyncThunk(
       // Store token in localStorage if remember me is checked
       if (credentials.rememberMe && response.token) {
         localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user || { email: credentials.email }));
       }
       
       // Return user data and token
@@ -46,6 +47,7 @@ export const logout = createAsyncThunk(
     // Call logout API and clear token
     await authService.logout();
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     return null;
   }
 );
@@ -59,8 +61,28 @@ const authSlice = createSlice({
       state.error = null;
     },
     checkAuth: (state) => {
-      // Simple token existence check - in a real app, would verify token validity
-      state.isAuthenticated = !!state.token;
+      // Check if token exists and restore user data
+      const token = localStorage.getItem('token');
+      const userData = localStorage.getItem('user');
+      
+      if (token && userData) {
+        state.isAuthenticated = true;
+        state.token = token;
+        try {
+          state.user = JSON.parse(userData);
+        } catch (e) {
+          // If user data is corrupted, clear everything
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          state.isAuthenticated = false;
+          state.token = null;
+          state.user = null;
+        }
+      } else {
+        state.isAuthenticated = false;
+        state.token = null;
+        state.user = null;
+      }
     }
   },
   extraReducers: (builder) => {
@@ -75,6 +97,11 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        // Store in localStorage
+        if (action.payload.token) {
+          localStorage.setItem('token', action.payload.token);
+          localStorage.setItem('user', JSON.stringify(action.payload.user));
+        }
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;

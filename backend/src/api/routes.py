@@ -157,3 +157,8 @@ app.include_router(
     prefix=f"{settings.API_V1_PREFIX}/context", 
     tags=["Contextual Intelligence"]
 )
+app.include_router(
+    contextual.router, 
+    prefix=f"{settings.API_V1_PREFIX}/contextual", 
+    tags=["Contextual Intelligence"]
+)

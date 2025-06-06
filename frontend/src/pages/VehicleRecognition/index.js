@@ -192,53 +192,128 @@ const VehicleRecognitionPage = () => {
   ];
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Vehicle Recognition
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary" paragraph>
-          Track and authenticate vehicles entering and exiting the warehouse premises.
+    <Container maxWidth="lg" className="fade-in">
+      {/* Header Section */}
+      <Box sx={{ 
+        mb: 4,
+        p: 4,
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%)',
+        borderRadius: 3,
+        backdropFilter: 'blur(15px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Avatar sx={{ 
+            bgcolor: 'transparent',
+            background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            width: 56,
+            height: 56
+          }}>
+            <VehicleIcon sx={{ fontSize: 28 }} />
+          </Avatar>
+          <Box>
+            <Typography variant="h3" component="h1" sx={{ 
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              mb: 1
+            }}>
+              Vehicle Recognition
+            </Typography>
+            <Typography variant="h6" color="text.secondary">
+              Smart vehicle tracking and authentication system
+            </Typography>
+          </Box>
+        </Box>
+        <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem' }}>
+          Track and authenticate vehicles entering and exiting the warehouse premises using advanced license plate recognition and security protocols.
         </Typography>
       </Box>
 
       {/* Tabs for different sections */}
-      <Paper sx={{ mb: 4 }}>
+      <Paper className="modern-card" sx={{ mb: 4, overflow: 'hidden' }}>
         <Tabs 
           value={tabValue} 
           onChange={handleTabChange} 
           indicatorColor="primary"
           textColor="primary"
           variant="fullWidth"
+          sx={{
+            '& .MuiTab-root': {
+              py: 2,
+              fontSize: '1rem',
+              fontWeight: 600,
+              '&.Mui-selected': {
+                background: 'linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%)',
+              }
+            }
+          }}
         >
-          <Tab icon={<CloudUploadIcon />} label="Detect Vehicle" />
-          <Tab icon={<ViewListIcon />} label="Vehicle Records" />
-          <Tab icon={<BlockIcon />} label="Unauthorized Vehicles" />
-          <Tab icon={<AnalyticsIcon />} label="Analytics" />
+          <Tab 
+            icon={<CloudUploadIcon />} 
+            label="Detect Vehicle" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
+          <Tab 
+            icon={<ViewListIcon />} 
+            label="Vehicle Records" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
+          <Tab 
+            icon={<BlockIcon />} 
+            label="Unauthorized" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
+          <Tab 
+            icon={<AnalyticsIcon />} 
+            label="Analytics" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
         </Tabs>
       </Paper>
 
       {/* Detect Vehicle tab */}
       <TabPanel value={tabValue} index={0}>
-        <Grid container spacing={3}>
+        <Grid container spacing={4}>
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper className="modern-form" sx={{ height: '100%' }}>
+              <Typography variant="h5" gutterBottom sx={{ 
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mb: 3
+              }}>
+                <CloudUploadIcon color="primary" />
                 Upload Vehicle Image
               </Typography>
               <Divider sx={{ mb: 3 }} />
 
               {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
+                <Alert severity="error" className="modern-alert" sx={{ mb: 3 }}>
                   {error}
                 </Alert>
               )}
 
               {detectionResult && (
-                <Alert severity={detectionResult.is_authorized ? "success" : "warning"} sx={{ mb: 3 }}>
-                  {detectionResult.is_authorized 
-                    ? `Detected authorized vehicle: ${detectionResult.license_plate}` 
-                    : `Detected unauthorized vehicle: ${detectionResult.license_plate}`}
+                <Alert 
+                  severity={detectionResult.is_authorized ? "success" : "warning"} 
+                  className="modern-alert" 
+                  sx={{ mb: 3 }}
+                  icon={detectionResult.is_authorized ? <CheckIcon /> : <BlockIcon />}
+                >
+                  <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                    {detectionResult.is_authorized 
+                      ? `✅ Authorized vehicle detected: ${detectionResult.license_plate}` 
+                      : `⚠️ Unauthorized vehicle detected: ${detectionResult.license_plate}`}
+                  </Typography>
                 </Alert>
               )}
 

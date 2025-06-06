@@ -12,9 +12,19 @@ import {
   FormControlLabel,
   Checkbox,
   Alert,
-  Link
+  Link,
+  Container,
+  Paper,
+  Grid,
+  Avatar
 } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { 
+  Visibility, 
+  VisibilityOff, 
+  LoginOutlined,
+  SecurityOutlined,
+  WarehouseOutlined
+} from '@mui/icons-material';
 import { login, clearError } from '../../store/slices/authSlice';
 
 /**
@@ -122,92 +132,231 @@ const LoginPage = () => {
   };
   
   return (
-    <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%', mt: 1 }}>
-      {/* Error Alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      {/* Email Field */}
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        id="email"
-        label="Email Address"
-        name="email"
-        autoComplete="email"
-        autoFocus
-        value={formData.email}
-        onChange={handleChange}
-        error={!!fieldErrors.email}
-        helperText={fieldErrors.email}
-        disabled={loading}
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Background decorative elements */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: -50,
+          right: -50,
+          width: 200,
+          height: 200,
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.1)',
+          animation: 'float 6s ease-in-out infinite',
+        }}
       />
-      
-      {/* Password Field */}
-      <TextField
-        margin="normal"
-        required
-        fullWidth
-        name="password"
-        label="Password"
-        type={showPassword ? 'text' : 'password'}
-        id="password"
-        autoComplete="current-password"
-        value={formData.password}
-        onChange={handleChange}
-        error={!!fieldErrors.password}
-        helperText={fieldErrors.password}
-        disabled={loading}
-        InputProps={{
-          endAdornment: (
-            <InputAdornment position="end">
-              <IconButton
-                aria-label="toggle password visibility"
-                onClick={handleTogglePasswordVisibility}
-                edge="end"
-              >
-                {showPassword ? <VisibilityOff /> : <Visibility />}
-              </IconButton>
-            </InputAdornment>
-          ),
+      <Box
+        sx={{
+          position: 'absolute',
+          bottom: -100,
+          left: -100,
+          width: 300,
+          height: 300,
+          borderRadius: '50%',
+          background: 'rgba(255, 255, 255, 0.05)',
+          animation: 'float 8s ease-in-out infinite reverse',
         }}
       />
       
-      {/* Remember Me Checkbox */}
-      <FormControlLabel
-        control={
-          <Checkbox
-            name="rememberMe"
-            color="primary"
-            checked={formData.rememberMe}
-            onChange={handleChange}
-            disabled={loading}
-          />
+      <Container maxWidth="sm">
+        <Paper
+          elevation={24}
+          className="modern-form fade-in"
+          sx={{
+            p: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: 3,
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+          }}
+        >
+          {/* Logo and Header */}
+          <Avatar
+            sx={{
+              m: 1,
+              bgcolor: 'transparent',
+              width: 64,
+              height: 64,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            }}
+          >
+            <WarehouseOutlined sx={{ fontSize: 32 }} />
+          </Avatar>
+          
+          <Typography component="h1" variant="h4" sx={{ mb: 1, fontWeight: 700 }}>
+            Welcome Back
+          </Typography>
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
+            Sign in to access your Warehouse AI Dashboard
+          </Typography>
+
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+            {/* Error Alert */}
+            {error && (
+              <Alert 
+                severity="error" 
+                className="modern-alert slide-up"
+                sx={{ mb: 3 }}
+              >
+                {error}
+              </Alert>
+            )}
+
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                {/* Email Field */}
+                <TextField
+                  required
+                  fullWidth
+                  id="email"
+                  label="Email Address"
+                  name="email"
+                  autoComplete="email"
+                  autoFocus
+                  value={formData.email}
+                  onChange={handleChange}
+                  error={!!fieldErrors.email}
+                  helperText={fieldErrors.email}
+                  disabled={loading}
+                  className="modern-input"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LoginOutlined color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                {/* Password Field */}
+                <TextField
+                  required
+                  fullWidth
+                  name="password"
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  autoComplete="current-password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  error={!!fieldErrors.password}
+                  helperText={fieldErrors.password}
+                  disabled={loading}
+                  className="modern-input"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SecurityOutlined color="action" />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleTogglePasswordVisibility}
+                          edge="end"
+                          disabled={loading}
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+            </Grid>
+            
+            {/* Remember Me Checkbox */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 3 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="rememberMe"
+                    color="primary"
+                    checked={formData.rememberMe}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                }
+                label="Remember me"
+              />
+              
+              <Link
+                component={RouterLink}
+                to="/forgot-password"
+                variant="body2"
+                sx={{ 
+                  textDecoration: 'none',
+                  color: 'primary.main',
+                  '&:hover': { textDecoration: 'underline' }
+                }}
+              >
+                Forgot password?
+              </Link>
+            </Box>
+            
+            {/* Login Button */}
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              disabled={loading}
+              className="modern-button"
+              sx={{
+                py: 1.5,
+                fontSize: '1rem',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                },
+                '&:disabled': {
+                  background: 'rgba(0, 0, 0, 0.12)',
+                },
+              }}
+            >
+              {loading ? (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={20} color="inherit" />
+                  Signing In...
+                </Box>
+              ) : (
+                'Sign In'
+              )}
+            </Button>
+            
+            {/* Additional Info */}
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Need help? Contact your system administrator
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      </Container>
+      
+      {/* CSS animations */}
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-20px); }
         }
-        label="Remember me"
-      />
-      
-      {/* Login Button */}
-      <Button
-        type="submit"
-        fullWidth
-        variant="contained"
-        disabled={loading}
-        sx={{ mt: 3, mb: 2, py: 1.5 }}
-      >
-        {loading ? <CircularProgress size={24} /> : 'Sign In'}
-      </Button>
-      
-      {/* Additional Links */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-        <Link component={RouterLink} to="/forgot-password" variant="body2">
-          Forgot password?
-        </Link>
-      </Box>
+      `}</style>
     </Box>
   );
 };

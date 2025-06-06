@@ -294,3 +294,166 @@ class FaceDetector:
         except Exception as e:
             logger.error(f"Error during face detection: {str(e)}")
             return []
+        
+    def detect_faces_in_frame(self, frame: np.ndarray) -> List[Dict]:
+        """
+        Detect faces in a video frame.
+        
+        Args:
+            frame: OpenCV frame/image as numpy array
+            
+        Returns:
+            List of face detection dictionaries with bbox, confidence, etc.
+        """
+        try:
+            if self.method == "mtcnn" and self.model is not None:
+                return self._detect_with_mtcnn_frame(frame)
+            else:
+                return self._detect_with_opencv_frame(frame)
+                
+        except Exception as e:
+            logger.error(f"Error detecting faces in frame: {str(e)}")
+            return []
+    
+    def _detect_with_mtcnn_frame(self, frame: np.ndarray) -> List[Dict]:
+        """
+        Detect faces using MTCNN on a video frame.
+        
+        Args:
+            frame: OpenCV frame as numpy array
+            
+        Returns:
+            List of face detection dictionaries
+        """
+        try:
+            # Convert BGR to RGB for MTCNN
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
+            # Detect faces
+            detections = self.model.detect_faces(rgb_frame)
+            
+            faces = []
+            for detection in detections:
+                if detection['confidence'] >= self.min_confidence:
+                    bbox = detection['box']
+                    # Convert to [x1, y1, x2, y2] format
+                    x1, y1, w, h = bbox
+                    x2, y2 = x1 + w, y1 + h
+                    
+                    face_data = {
+                        "bbox": [x1, y1, x2, y2],
+                        "confidence": detection['confidence'],
+                        "keypoints": detection.get('keypoints', {}),
+                        "method": "mtcnn"
+                    }
+                    faces.append(face_data)
+            
+            logger.debug(f"MTCNN detected {len(faces)} faces in frame")
+            return faces
+            
+        except Exception as e:
+            logger.error(f"Error in MTCNN frame detection: {str(e)}")
+            return []
+    
+    def _detect_with_opencv_frame(self, frame: np.ndarray) -> List[Dict]:
+        """
+        Detect faces using OpenCV DNN on a video frame.
+        
+        Args:
+            frame: OpenCV frame as numpy array
+            
+        Returns:
+            List of face detection dictionaries
+        """
+        try:
+            if self.model is not None:
+                return self._detect_with_dnn_frame(frame)
+            else:
+                return self._detect_with_cascade_frame(frame)
+                
+        except Exception as e:
+            logger.error(f"Error in OpenCV frame detection: {str(e)}")
+            return []
+    
+    def _detect_with_dnn_frame(self, frame: np.ndarray) -> List[Dict]:
+        """
+        Detect faces using DNN model on a video frame.
+        """
+        height, width = frame.shape[:2]
+        
+        # Create blob from frame
+        blob = cv2.dnn.blobFromImage(frame, 1.0, (300, 300), [104, 117, 123], False, False)
+        
+        # Set input to the network
+        self.model.setInput(blob)
+        
+        # Run inference
+        detections = self.model.forward()
+        
+        faces = []
+        for i in range(detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+            
+            if confidence >= self.min_confidence:
+                # Get bounding box coordinates
+                x1 = int(detections[0, 0, i, 3] * width)
+                y1 = int(detections[0, 0, i, 4] * height)
+                x2 = int(detections[0, 0, i, 5] * width)
+                y2 = int(detections[0, 0, i, 6] * height)
+                
+                # Ensure coordinates are within frame bounds
+                x1 = max(0, x1)
+                y1 = max(0, y1)
+                x2 = min(width, x2)
+                y2 = min(height, y2)
+                
+                # Check if bounding box is valid
+                if x2 > x1 and y2 > y1:
+                    face_data = {
+                        "bbox": [x1, y1, x2, y2],
+                        "confidence": float(confidence),
+                        "method": "opencv-dnn"
+                    }
+                    faces.append(face_data)
+        
+        logger.debug(f"DNN detected {len(faces)} faces in frame")
+        return faces
+    
+    def _detect_with_cascade_frame(self, frame: np.ndarray) -> List[Dict]:
+        """
+        Detect faces using Haar cascade on a video frame.
+        """
+        # Convert to grayscale
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+        # Enhance contrast for better detection
+        gray = cv2.equalizeHist(gray)
+        
+        # Detect faces
+        face_rects = self.model.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(30, 30),
+            flags=cv2.CASCADE_SCALE_IMAGE
+        )
+        
+        faces = []
+        for (x, y, w, h) in face_rects:
+            # Convert to [x1, y1, x2, y2] format
+            x1, y1, x2, y2 = x, y, x + w, y + h
+            
+            # Calculate confidence based on face size (larger faces = higher confidence)
+            face_area = w * h
+            confidence = min(face_area / 10000, 0.95)  # Normalize and cap at 0.95
+            
+            if confidence >= self.min_confidence:
+                face_data = {
+                    "bbox": [x1, y1, x2, y2],
+                    "confidence": confidence,
+                    "method": "opencv-cascade"
+                }
+                faces.append(face_data)
+        
+        logger.debug(f"Cascade detected {len(faces)} faces in frame")
+        return faces

@@ -42,9 +42,16 @@ class GunnyBagDetector:
             
             # Check if model file exists
             if not os.path.exists(self.model_path):
-                logger.warning(f"Model file not found at {self.model_path}. Using fallback detection.")
-                self.model = None
-                return
+                logger.warning(f"Model file not found at {self.model_path}. Attempting to download YOLOv8n...")
+                # Download YOLOv8n model if not available
+                try:
+                    self.model = YOLO('yolov8n.pt')  # This will auto-download
+                    logger.info("YOLOv8n model downloaded and loaded successfully")
+                    return
+                except Exception as download_error:
+                    logger.warning(f"Failed to download model: {download_error}. Using fallback detection.")
+                    self.model = None
+                    return
                 
             # Load YOLOv8 model
             self.model = YOLO(self.model_path)
@@ -168,3 +175,111 @@ class GunnyBagDetector:
         
         logger.info(f"Simulated {len(detections)} gunny bags with avg confidence {self.last_confidence:.2f}")
         return detections
+    
+    def detect_from_frame(self, frame: np.ndarray) -> List[Dict[str, Any]]:
+        """
+        Detect gunny bags in a video frame.
+        
+        Args:
+            frame: OpenCV frame/image as numpy array
+            
+        Returns:
+            List of detection dictionaries with bbox, confidence, etc.
+        """
+        try:
+            if self.model is not None:
+                # Use actual YOLO model for detection
+                results = self.model(frame)
+                detections = []
+                
+                for result in results:
+                    boxes = result.boxes
+                    if boxes is not None:
+                        for i, box in enumerate(boxes):
+                            # Extract bounding box coordinates
+                            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                            confidence = box.conf[0].cpu().numpy()
+                            class_id = int(box.cls[0].cpu().numpy())
+                            
+                            # Filter by confidence threshold
+                            if confidence >= self.confidence_threshold:
+                                detection = {
+                                    "bbox": [int(x1), int(y1), int(x2), int(y2)],
+                                    "confidence": float(confidence),
+                                    "class_id": class_id,
+                                    "width": int(x2 - x1),
+                                    "height": int(y2 - y1),
+                                    "area": int((x2 - x1) * (y2 - y1))
+                                }
+                                detections.append(detection)
+                
+                self.last_confidence = np.mean([d["confidence"] for d in detections]) if detections else 0.0
+                logger.debug(f"Detected {len(detections)} gunny bags in frame")
+                return detections
+            else:
+                # Fallback to simulated detection for demo purposes
+                return self._simulate_frame_detections(frame)
+                
+        except Exception as e:
+            logger.error(f"Error detecting gunny bags in frame: {str(e)}")
+            return self._simulate_frame_detections(frame)
+    
+    def _simulate_frame_detections(self, frame: np.ndarray) -> List[Dict[str, Any]]:
+        """
+        Simulate gunny bag detections for demo purposes.
+        Uses simple computer vision techniques to detect bag-like objects.
+        """
+        try:
+            # Convert to grayscale
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            # Apply Gaussian blur
+            blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+            
+            # Apply adaptive thresholding
+            thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                         cv2.THRESH_BINARY_INV, 11, 2)
+            
+            # Find contours
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            detections = []
+            min_area = 5000  # Minimum area for a gunny bag
+            max_area = 50000  # Maximum area for a gunny bag
+            
+            for i, contour in enumerate(contours):
+                area = cv2.contourArea(contour)
+                
+                # Filter by area (gunny bags should be medium-sized objects)
+                if min_area < area < max_area:
+                    # Get bounding rectangle
+                    x, y, w, h = cv2.boundingRect(contour)
+                    
+                    # Calculate aspect ratio (gunny bags are roughly rectangular)
+                    aspect_ratio = w / h if h > 0 else 0
+                    
+                    # Filter by aspect ratio (0.5 to 2.0 for gunny bags)
+                    if 0.5 <= aspect_ratio <= 2.0:
+                        # Calculate confidence based on area and aspect ratio
+                        area_score = min(area / max_area, 1.0)
+                        aspect_score = 1.0 - abs(aspect_ratio - 1.0)  # Closer to square = higher score
+                        confidence = (area_score + aspect_score) / 2.0
+                        
+                        if confidence >= self.confidence_threshold:
+                            detection = {
+                                "bbox": [x, y, x + w, y + h],
+                                "confidence": float(confidence),
+                                "class_id": 0,  # Assume single class for gunny bags
+                                "width": w,
+                                "height": h,
+                                "area": int(area)
+                            }
+                            detections.append(detection)
+            
+            self.last_confidence = np.mean([d["confidence"] for d in detections]) if detections else 0.0
+            logger.debug(f"Simulated detection: {len(detections)} gunny bags found")
+            return detections
+            
+        except Exception as e:
+            logger.error(f"Error in simulated detection: {str(e)}")
+            return []

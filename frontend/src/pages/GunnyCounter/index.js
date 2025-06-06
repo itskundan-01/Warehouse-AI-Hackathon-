@@ -26,7 +26,8 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  Chip
+  Chip,
+  Avatar
 } from '@mui/material';
 import { 
   CloudUpload as CloudUploadIcon,
@@ -35,7 +36,8 @@ import {
   ViewList as ViewListIcon,
   FilterList as FilterListIcon,
   Download as DownloadIcon,
-  VisibilityOutlined as ViewIcon
+  VisibilityOutlined as ViewIcon,
+  Inventory as InventoryIcon
 } from '@mui/icons-material';
 import {
   LineChart,
@@ -297,57 +299,125 @@ const GunnyCounterPage = () => {
   ];
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Gunny Bag Counter
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary" paragraph>
-          Upload images to count gunny bags, view historical counts, and analyze trends over time.
+    <Container maxWidth="lg" className="fade-in">
+      {/* Header Section */}
+      <Box sx={{ 
+        mb: 4,
+        p: 4,
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%)',
+        borderRadius: 3,
+        backdropFilter: 'blur(15px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Avatar sx={{ 
+            bgcolor: 'transparent',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            width: 56,
+            height: 56
+          }}>
+            <InventoryIcon sx={{ fontSize: 28 }} />
+          </Avatar>
+          <Box>
+            <Typography variant="h3" component="h1" sx={{ 
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              mb: 1
+            }}>
+              Gunny Bag Counter
+            </Typography>
+            <Typography variant="h6" color="text.secondary">
+              AI-powered gunny bag counting and inventory management
+            </Typography>
+          </Box>
+        </Box>
+        <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem' }}>
+          Upload images to count gunny bags, view historical counts, and analyze trends over time with advanced computer vision technology.
         </Typography>
       </Box>
 
       {/* Display API errors if any */}
       {apiError && (
-        <Alert severity="error" sx={{ mb: 4 }}>
+        <Alert severity="error" className="modern-alert slide-up" sx={{ mb: 4 }}>
           {apiError.message}
         </Alert>
       )}
 
       {/* Tabs for different sections */}
-      <Paper sx={{ mb: 4 }}>
+      <Paper className="modern-card" sx={{ mb: 4, overflow: 'hidden' }}>
         <Tabs 
           value={tabValue} 
           onChange={handleTabChange} 
           indicatorColor="primary"
           textColor="primary"
           variant="fullWidth"
+          sx={{
+            '& .MuiTab-root': {
+              py: 2,
+              fontSize: '1rem',
+              fontWeight: 600,
+              '&.Mui-selected': {
+                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+              }
+            }
+          }}
         >
-          <Tab icon={<CloudUploadIcon />} label="Count Bags" />
-          <Tab icon={<ViewListIcon />} label="Recent Counts" />
-          <Tab icon={<AnalyticsIcon />} label="Analytics" />
-          <Tab icon={<HistoryIcon />} label="History" />
+          <Tab 
+            icon={<CloudUploadIcon />} 
+            label="Count Bags" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
+          <Tab 
+            icon={<ViewListIcon />} 
+            label="Recent Counts" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
+          <Tab 
+            icon={<AnalyticsIcon />} 
+            label="Analytics" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
+          <Tab 
+            icon={<HistoryIcon />} 
+            label="History" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
         </Tabs>
       </Paper>
 
       {/* Count Bags tab */}
       <TabPanel value={tabValue} index={0}>
-        <Grid container spacing={3}>
+        <Grid container spacing={4}>
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: '100%' }}>
-              <Typography variant="h6" gutterBottom>
+            <Paper className="modern-form" sx={{ height: '100%' }}>
+              <Typography variant="h5" gutterBottom sx={{ 
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                mb: 3
+              }}>
+                <CloudUploadIcon color="primary" />
                 Upload Image
               </Typography>
               <Divider sx={{ mb: 3 }} />
 
               {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
+                <Alert severity="error" className="modern-alert" sx={{ mb: 3 }}>
                   {error}
                 </Alert>
               )}
 
               {countResult && (
-                <Alert severity="success" sx={{ mb: 3 }}>
+                <Alert severity="success" className="modern-alert" sx={{ mb: 3 }}>
                   <Typography variant="body1" fontWeight="bold">
                     Counted {countResult.bag_count} gunny bags
                   </Typography>

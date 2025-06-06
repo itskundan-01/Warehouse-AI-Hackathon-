@@ -264,46 +264,91 @@ const Dashboard = () => {
   }
   
   return (
-    <Box sx={{ py: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1">
-          Dashboard
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          <TodayIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
-          {new Date().toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}
-        </Typography>
+    <Box sx={{ py: 2 }} className="fade-in">
+      {/* Header Section */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 4,
+        p: 3,
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%)',
+        borderRadius: 3,
+        backdropFilter: 'blur(15px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+      }}>
+        <Box>
+          <Typography variant="h3" component="h1" sx={{ 
+            fontWeight: 700, 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            mb: 1
+          }}>
+            Warehouse AI Dashboard
+          </Typography>
+          <Typography variant="h6" color="text.secondary">
+            Real-time monitoring and intelligence system
+          </Typography>
+        </Box>
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography variant="subtitle1" sx={{ 
+            color: 'primary.main', 
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            <TodayIcon fontSize="small" />
+            {new Date().toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Last updated: {new Date().toLocaleTimeString()}
+          </Typography>
+        </Box>
       </Box>
 
       {/* Active Alerts */}
       {(dashboardData.facialRecognition.alerts.length > 0 || 
          dashboardData.vehicleRecognition.alerts.length > 0) && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            <WarningIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 1, color: 'warning.main' }} />
+        <Box sx={{ mb: 4 }} className="slide-up">
+          <Typography variant="h5" sx={{ 
+            mb: 3, 
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            <WarningIcon sx={{ color: 'warning.main' }} />
             Active Alerts
           </Typography>
-          <Grid container spacing={2}>
+          <Grid container spacing={3}>
             {dashboardData.facialRecognition.alerts.map(alert => (
               <Grid item xs={12} md={6} key={`facial-alert-${alert.id}`}>
                 <Alert 
                   severity={alert.severity}
+                  className="modern-alert"
+                  sx={{ borderRadius: 2 }}
                   action={
                     <Button 
                       color="inherit" 
                       size="small"
+                      className="modern-button"
                       onClick={() => navigateToModule('/facial-recognition')}
+                      sx={{ minWidth: 'auto', px: 2 }}
                     >
                       VIEW
                     </Button>
                   }
                 >
-                  <AlertTitle>Facial Recognition Alert</AlertTitle>
+                  <AlertTitle sx={{ fontWeight: 600 }}>Facial Recognition Alert</AlertTitle>
                   {alert.message} — <strong>{alert.time}</strong>
                 </Alert>
               </Grid>
@@ -312,11 +357,15 @@ const Dashboard = () => {
               <Grid item xs={12} md={6} key={`vehicle-alert-${alert.id}`}>
                 <Alert 
                   severity={alert.severity}
+                  className="modern-alert"
+                  sx={{ borderRadius: 2 }}
                   action={
                     <Button 
                       color="inherit" 
                       size="small"
+                      className="modern-button"
                       onClick={() => navigateToModule('/vehicle-recognition')}
+                      sx={{ minWidth: 'auto', px: 2 }}
                     >
                       VIEW
                     </Button>
@@ -332,46 +381,87 @@ const Dashboard = () => {
       )}
       
       {/* Warehouse Overview Card */}
-      <Card sx={{ mb: 4, borderRadius: 2 }} elevation={2}>
-        <CardHeader title="Warehouse Network Overview" />
+      <Card className="modern-card stat-card" sx={{ mb: 4 }}>
+        <CardHeader 
+          title={
+            <Typography variant="h5" sx={{ 
+              fontWeight: 600,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>
+              Warehouse Network Overview
+            </Typography>
+          }
+          sx={{ pb: 2 }}
+        />
         <CardContent>
-          <Grid container spacing={3}>
+          <Grid container spacing={4}>
             <Grid item xs={6} sm={3}>
-              <Box textAlign="center">
-                <Typography variant="h4" color="primary.main">
+              <Box textAlign="center" className="slide-up">
+                <Typography variant="h3" sx={{ 
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  mb: 1
+                }}>
                   {dashboardData.warehouseMetrics.totalWarehouses}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
                   Monitored Warehouses
                 </Typography>
               </Box>
             </Grid>
             <Grid item xs={6} sm={3}>
-              <Box textAlign="center">
-                <Typography variant="h4" color="secondary.main">
+              <Box textAlign="center" className="slide-up">
+                <Typography variant="h3" sx={{ 
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  mb: 1
+                }}>
                   {dashboardData.warehouseMetrics.activeCameras}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
                   Active Cameras
                 </Typography>
               </Box>
             </Grid>
             <Grid item xs={6} sm={3}>
-              <Box textAlign="center">
-                <Typography variant="h4" color="error.main">
+              <Box textAlign="center" className="slide-up">
+                <Typography variant="h3" sx={{ 
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  mb: 1
+                }}>
                   {dashboardData.warehouseMetrics.activeAlerts}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
                   Active Alerts
                 </Typography>
               </Box>
             </Grid>
             <Grid item xs={6} sm={3}>
-              <Box textAlign="center">
-                <Typography variant="h4" color="success.main">
+              <Box textAlign="center" className="slide-up">
+                <Typography variant="h3" sx={{ 
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  mb: 1
+                }}>
                   {dashboardData.warehouseMetrics.stockAccuracy}%
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
                   Stock Accuracy
                 </Typography>
               </Box>
@@ -381,10 +471,11 @@ const Dashboard = () => {
       </Card>
       
       {/* Stats Overview */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={4} sx={{ mb: 4 }}>
         {/* Facial Recognition Stats */}
         <Grid item xs={12} md={6} lg={3}>
           <Paper 
+            className="modern-card stat-card"
             sx={{ 
               p: 3, 
               height: '100%',
@@ -392,11 +483,15 @@ const Dashboard = () => {
               flexDirection: 'column',
               position: 'relative',
               overflow: 'hidden',
-              '&:hover .module-action': {
-                opacity: 1,
+              cursor: 'pointer',
+              '&:hover': {
+                '& .module-action': {
+                  opacity: 1,
+                  transform: 'translateY(0)',
+                },
               }
             }}
-            elevation={2}
+            onClick={() => navigateToModule('/facial-recognition')}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <Avatar sx={{ backgroundColor: 'primary.main', mr: 2 }}>
@@ -451,21 +546,32 @@ const Dashboard = () => {
               />
             </Box>
             
-            <Button 
-              variant="text" 
-              color="primary"
-              className="module-action"
-              onClick={() => navigateToModule('/facial-recognition')}
-              sx={{ 
-                mt: 'auto', 
-                alignSelf: 'flex-end',
-                opacity: 0,
-                transition: 'opacity 0.2s'
-              }}
-              endIcon={<ArrowForwardIcon />}
-            >
-              View Details
-            </Button>
+            <Box sx={{ 
+              mt: 'auto', 
+              display: 'flex',
+              gap: 1,
+              justifyContent: 'flex-end',
+              opacity: 0,
+              transition: 'opacity 0.2s'
+            }} className="module-action">
+              <Button 
+                variant="outlined" 
+                size="small"
+                color="primary"
+                onClick={() => navigateToModule('/facial-recognition/video')}
+                sx={{ fontSize: '0.75rem', px: 2 }}
+              >
+                Upload Video
+              </Button>
+              <Button 
+                variant="text" 
+                color="primary"
+                onClick={() => navigateToModule('/facial-recognition')}
+                endIcon={<ArrowForwardIcon />}
+              >
+                View Details
+              </Button>
+            </Box>
           </Paper>
         </Grid>
         
@@ -538,21 +644,32 @@ const Dashboard = () => {
               />
             </Box>
             
-            <Button 
-              variant="text" 
-              color="secondary"
-              className="module-action"
-              onClick={() => navigateToModule('/vehicle-recognition')}
-              sx={{ 
-                mt: 'auto', 
-                alignSelf: 'flex-end',
-                opacity: 0,
-                transition: 'opacity 0.2s'
-              }}
-              endIcon={<ArrowForwardIcon />}
-            >
-              View Details
-            </Button>
+            <Box sx={{ 
+              mt: 'auto', 
+              display: 'flex',
+              gap: 1,
+              justifyContent: 'flex-end',
+              opacity: 0,
+              transition: 'opacity 0.2s'
+            }} className="module-action">
+              <Button 
+                variant="outlined" 
+                size="small"
+                color="secondary"
+                onClick={() => navigateToModule('/vehicle-recognition/video')}
+                sx={{ fontSize: '0.75rem', px: 2 }}
+              >
+                Upload Video
+              </Button>
+              <Button 
+                variant="text" 
+                color="secondary"
+                onClick={() => navigateToModule('/vehicle-recognition')}
+                endIcon={<ArrowForwardIcon />}
+              >
+                View Details
+              </Button>
+            </Box>
           </Paper>
         </Grid>
         
@@ -614,21 +731,32 @@ const Dashboard = () => {
               />
             </Box>
             
-            <Button 
-              variant="text" 
-              color="warning"
-              className="module-action"
-              onClick={() => navigateToModule('/gunny-counter')}
-              sx={{ 
-                mt: 'auto', 
-                alignSelf: 'flex-end',
-                opacity: 0,
-                transition: 'opacity 0.2s'
-              }}
-              endIcon={<ArrowForwardIcon />}
-            >
-              View Details
-            </Button>
+            <Box sx={{ 
+              mt: 'auto', 
+              display: 'flex',
+              gap: 1,
+              justifyContent: 'flex-end',
+              opacity: 0,
+              transition: 'opacity 0.2s'
+            }} className="module-action">
+              <Button 
+                variant="outlined" 
+                size="small"
+                color="warning"
+                onClick={() => navigateToModule('/gunny-counter/video')}
+                sx={{ fontSize: '0.75rem', px: 2 }}
+              >
+                Upload Video
+              </Button>
+              <Button 
+                variant="text" 
+                color="warning"
+                onClick={() => navigateToModule('/gunny-counter')}
+                endIcon={<ArrowForwardIcon />}
+              >
+                View Details
+              </Button>
+            </Box>
           </Paper>
         </Grid>
         
@@ -692,21 +820,32 @@ const Dashboard = () => {
               />
             </Box>
             
-            <Button 
-              variant="text" 
-              color="info"
-              className="module-action"
-              onClick={() => navigateToModule('/contextual-intelligence')}
-              sx={{ 
-                mt: 'auto', 
-                alignSelf: 'flex-end',
-                opacity: 0,
-                transition: 'opacity 0.2s'
-              }}
-              endIcon={<ArrowForwardIcon />}
-            >
-              View Details
-            </Button>
+            <Box sx={{ 
+              mt: 'auto', 
+              display: 'flex',
+              gap: 1,
+              justifyContent: 'flex-end',
+              opacity: 0,
+              transition: 'opacity 0.2s'
+            }} className="module-action">
+              <Button 
+                variant="outlined" 
+                size="small"
+                color="info"
+                onClick={() => navigateToModule('/contextual-intelligence/video')}
+                sx={{ fontSize: '0.75rem', px: 2 }}
+              >
+                Upload Video
+              </Button>
+              <Button 
+                variant="text" 
+                color="info"
+                onClick={() => navigateToModule('/contextual-intelligence')}
+                endIcon={<ArrowForwardIcon />}
+              >
+                View Details
+              </Button>
+            </Box>
           </Paper>
         </Grid>
       </Grid>

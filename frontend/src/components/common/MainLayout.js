@@ -19,7 +19,8 @@ import {
   Menu,
   MenuItem,
   Tooltip,
-  Badge
+  Badge,
+  Collapse
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -32,7 +33,10 @@ import {
   Settings as SettingsIcon,
   Notifications as NotificationsIcon,
   Logout as LogoutIcon,
-  AdminPanelSettings as AdminIcon
+  AdminPanelSettings as AdminIcon,
+  ExpandLess as ExpandLessIcon,
+  ExpandMore as ExpandMoreIcon,
+  VideoLibrary as VideoIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toggleSidebar, setSidebarOpen } from '../../store/slices/uiSlice';
@@ -54,6 +58,7 @@ const MainLayout = () => {
   // State for user menu
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
+  const [expandedMenus, setExpandedMenus] = useState({});
   
   // Mock notifications for UI demo
   const notifications = [
@@ -73,6 +78,14 @@ const MainLayout = () => {
     if (isMobile) {
       dispatch(setSidebarOpen(false));
     }
+  };
+
+  // Handle submenu expansion
+  const handleMenuExpand = (itemName) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [itemName]: !prev[itemName]
+    }));
   };
   
   // Handle user menu
@@ -113,22 +126,34 @@ const MainLayout = () => {
     { 
       name: 'Facial Recognition', 
       path: '/facial-recognition', 
-      icon: <PersonIcon /> 
+      icon: <PersonIcon />,
+      submenu: [
+        { name: 'Upload Video', path: '/facial-recognition/video' }
+      ]
     },
     { 
       name: 'Vehicle Recognition', 
       path: '/vehicle-recognition', 
-      icon: <VehicleIcon /> 
+      icon: <VehicleIcon />,
+      submenu: [
+        { name: 'Upload Video', path: '/vehicle-recognition/video' }
+      ]
     },
     { 
       name: 'Gunny Counter', 
       path: '/gunny-counter', 
-      icon: <InventoryIcon /> 
+      icon: <InventoryIcon />,
+      submenu: [
+        { name: 'Upload Video', path: '/gunny-counter/video' }
+      ]
     },
     { 
       name: 'Contextual Intelligence', 
       path: '/contextual-intelligence', 
-      icon: <SearchIcon /> 
+      icon: <SearchIcon />,
+      submenu: [
+        { name: 'Upload Video', path: '/contextual-intelligence/video' }
+      ]
     }
   ];
   
@@ -142,12 +167,18 @@ const MainLayout = () => {
   }
   
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
+    <Box sx={{ display: 'flex', height: '100vh', background: '#fafafa' }}>
       {/* App Bar */}
       <AppBar 
         position="fixed" 
+        className="app-header"
         sx={{ 
           zIndex: theme.zIndex.drawer + 1,
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 2px 20px rgba(0, 0, 0, 0.05)',
+          color: '#2c3e50',
           transition: theme.transitions.create(['width', 'margin'], {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.leavingScreen,
@@ -162,31 +193,99 @@ const MainLayout = () => {
           }),
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ py: 1 }}>
           <IconButton
             color="inherit"
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2 }}
+            sx={{ 
+              mr: 2,
+              bgcolor: 'primary.main',
+              color: 'white',
+              borderRadius: 2,
+              '&:hover': {
+                bgcolor: 'primary.dark',
+                transform: 'scale(1.05)',
+              },
+              transition: 'all 0.2s ease'
+            }}
           >
             {sidebarOpen ? <ChevronLeftIcon /> : <MenuIcon />}
           </IconButton>
           
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            WarehouseVision AI
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+            <Box sx={{ 
+              width: 40,
+              height: 40,
+              borderRadius: 2,
+              bgcolor: 'primary.main',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mr: 2
+            }}>
+              <Typography variant="h6" sx={{ color: 'white', fontWeight: 700 }}>
+                AI
+              </Typography>
+            </Box>
+            <Typography variant="h5" noWrap component="div" sx={{ 
+              fontWeight: 700,
+              color: 'primary.main',
+            }}>
+              WarehouseVision AI
+            </Typography>
+          </Box>
+          
+          {/* Status indicator */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1, 
+            mr: 3,
+            px: 2,
+            py: 0.5,
+            borderRadius: 2,
+            background: 'rgba(76, 175, 80, 0.1)',
+            border: '1px solid rgba(76, 175, 80, 0.2)'
+          }}>
+            <Box sx={{ 
+              width: 8, 
+              height: 8, 
+              borderRadius: '50%', 
+              background: '#4caf50',
+              animation: 'pulse 2s infinite'
+            }} />
+            <Typography variant="body2" sx={{ color: '#11998e', fontWeight: 600 }}>
+              System Online
+            </Typography>
+          </Box>
           
           {/* Notifications */}
-          <Box sx={{ display: 'flex' }}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
             <Tooltip title="Notifications">
               <IconButton 
                 color="inherit"
                 onClick={handleNotificationOpen}
+                sx={{ 
+                  background: 'rgba(0, 0, 0, 0.05)',
+                  borderRadius: 2,
+                  '&:hover': {
+                    background: 'rgba(0, 0, 0, 0.1)',
+                    transform: 'scale(1.05)',
+                  },
+                  transition: 'all 0.2s ease'
+                }}
               >
                 <Badge 
                   badgeContent={notifications.filter(n => !n.read).length} 
                   color="error"
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      bgcolor: 'error.main',
+                      border: '2px solid white',
+                    }
+                  }}
                 >
                   <NotificationsIcon />
                 </Badge>
@@ -360,33 +459,82 @@ const MainLayout = () => {
         <Box sx={{ overflow: 'auto', mt: 2 }}>
           <List>
             {navigationItems.map((item) => (
-              <ListItem 
-                button 
-                key={item.name}
-                onClick={() => handleNavigation(item.path)}
-                sx={{
-                  minHeight: 48,
-                  px: 2.5,
-                  justifyContent: sidebarOpen ? 'initial' : 'center',
-                }}
-              >
-                <ListItemIcon
+              <React.Fragment key={item.name}>
+                <ListItem 
+                  button 
+                  onClick={() => item.submenu ? handleMenuExpand(item.name) : handleNavigation(item.path)}
                   sx={{
-                    minWidth: 0,
-                    mr: sidebarOpen ? 2 : 'auto',
-                    justifyContent: 'center',
+                    minHeight: 48,
+                    px: 2.5,
+                    justifyContent: sidebarOpen ? 'initial' : 'center',
                   }}
                 >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.name} 
-                  sx={{ 
-                    display: sidebarOpen ? 'block' : 'none',
-                    whiteSpace: 'nowrap'
-                  }} 
-                />
-              </ListItem>
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: sidebarOpen ? 2 : 'auto',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.name} 
+                    sx={{ 
+                      display: sidebarOpen ? 'block' : 'none',
+                      whiteSpace: 'nowrap'
+                    }} 
+                  />
+                  {item.submenu && sidebarOpen && (
+                    expandedMenus[item.name] ? <ExpandLessIcon /> : <ExpandMoreIcon />
+                  )}
+                </ListItem>
+                
+                {/* Submenu items */}
+                {item.submenu && (
+                  <Collapse in={expandedMenus[item.name] && sidebarOpen} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      <ListItem 
+                        button
+                        onClick={() => handleNavigation(item.path)}
+                        sx={{
+                          pl: 6,
+                          minHeight: 40,
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 0, mr: 2 }}>
+                          <DashboardIcon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText 
+                          primary="Main Module"
+                          primaryTypographyProps={{ fontSize: '0.875rem' }}
+                        />
+                      </ListItem>
+                      {item.submenu.map((subItem) => (
+                        <ListItem 
+                          button
+                          key={subItem.name}
+                          onClick={() => handleNavigation(subItem.path)}
+                          sx={{
+                            pl: 6,
+                            minHeight: 40,
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 0, mr: 2 }}>
+                            <VideoIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={subItem.name}
+                            primaryTypographyProps={{ fontSize: '0.875rem' }}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Collapse>
+                )}
+              </React.Fragment>
             ))}
           </List>
           <Divider sx={{ my: 1 }} />
