@@ -408,34 +408,11 @@ integration
 with
 APSCSCL’s
 portal
-The Top 3 participants will be selected as winners of the Hackathon challenge.
-Phase 3: Award (Deadline: 5th June): The Top 3 winners will receive cash prizes, as detailed below.
-Sl. No. Rank Prize Amount
-1. 1st ₹ 10 lakhs
-2. 2nd ₹ 5 lakhs
-3. 3rd ₹ 3 lakhs
-Phase 4: Procurement (15th June onwards): The Top 3 winners will be presented opportunity for
-deployment as a part of APSCSCL Portal (Digital Stack) as per the MSME / Startup Policy of Andhra
-Pradesh that provides purchase preference and market access to the winners of such hackathons /
-grand challenges.
-5 TIMELINES AND DURATION
-S. No. Milestone Date
-1 Launch of Hackathon 21/04/2025
-2 Application submission deadline 10/05/2025
-3 Shortlisting announcement 15/05/2025
-4 On-ground testing 16/05/2025 to 31/05/2025
-5 Presentation round 02/06/2025 to 03/06/2025
-6 Evaluation and scoring 04/06/2025
-7 Award 05/06/2025
-8 Procurement 15/06/2025 onwards
-6 SUPPORT AND QUERIES
-FCS51-13022/8/2025-MRKT SEC - APSCSCL I/4060279/2025
-The participants are encouraged to reach out to the designated SPOCs for any queries related to:
- Application process and eligibility
- Clarifications on use cases and problem statements
- Submission requirements and timelines.
-Please reach out to the following SPOCs:
-Sl. No. Milestone Designation Email ID Contact number
-1 Sri Lakshmi Manager Storage pdsho.apscsc@ap.gov.in 7093501314
-2 Goutham Consultant ksgoutham94@gmail.com 9486875272
-FCS51-13022/8/2025-MRKT SEC - APSCSCL I/4060279/2025
+
+
+
+
+Coordinates########
+nandyala - [[151,81],[241,1036]]
+puthuru - [[151,81],[219,1078]] (To be updated)
+unloading - [[2381,4],[2389,1394]]

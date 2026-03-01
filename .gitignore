@@ -27,6 +27,7 @@ htmlcov/
 
 # Virtual Environment
 venv/
+venv_312
 env/
 ENV/
 .env
@@ -169,3 +170,25 @@ tsconfig.tsbuildinfo
 *_credentials.json
 *_secret.json
 auth_config.json
+
+# Analysis results and temporary JSON outputs
+analysis_results_*.json
+apscscl_analysis_results_*.json
+face_processing_stats_*.json
+
+# Test outputs
+results/*.json
+
+# Local scripts with potential secrets
+demo.sh
+
+# Model weights (use LFS or download separately)
+*.pt
+*.pth
+*.weights
+
+# Generated output directories
+gunny_output/
+lightning_detections/
+optimized_detections/
+ultrafast_detections/
