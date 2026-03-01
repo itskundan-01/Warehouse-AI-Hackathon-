@@ -15,37 +15,19 @@ const authService = {
    */
   login: async (email, password) => {
     try {
-      // For development/demo purposes - bypassing API call
-      // In a real application, replace this with an actual API call
-      if (email === 'admin@warehouse.com' && password === 'password123') {
-        return {
-          user: {
-            id: '1',
-            email: email,
-            name: 'Admin User',
-            role: 'admin'
-          },
-          token: 'demo-auth-token',
-          authenticated: true
-        };
+      // Make API call to backend for authentication
+      const response = await axios.post(`${API_URL}/auth/login`, {
+        email,
+        password
+      });
+
+      // Store authentication token
+      if (response.data.token) {
+        localStorage.setItem('auth_token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
       }
 
-      // For fallback testing credentials
-      if (email === 'test@example.com' && password === 'password') {
-        return {
-          user: {
-            id: '2',
-            email: email,
-            name: 'Test User',
-            role: 'user'
-          },
-          token: 'demo-auth-token',
-          authenticated: true
-        };
-      }
-      
-      // If no matches, throw authentication error
-      throw new Error('Invalid email or password');
+      return response.data;
     } catch (error) {
       // Format error message
       const errorMsg = error.response?.data?.message || 
