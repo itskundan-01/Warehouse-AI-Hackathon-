@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
-from src.api.endpoints import gunny, vehicle, facial, contextual
+from src.api.endpoints import gunny, vehicle, facial, contextual, plate_detection
 from src.config.settings import get_settings
 from src.config.logging_config import setup_logging, get_logger
 
@@ -138,6 +138,9 @@ async def health():
 
 # Include API routers
 app.include_router(
+    plate_detection.router
+)
+app.include_router(
     gunny.router, 
     prefix=f"{settings.API_V1_PREFIX}/gunny", 
     tags=["Gunny Bag Counter"]
@@ -155,10 +158,5 @@ app.include_router(
 app.include_router(
     contextual.router, 
     prefix=f"{settings.API_V1_PREFIX}/context", 
-    tags=["Contextual Intelligence"]
-)
-app.include_router(
-    contextual.router, 
-    prefix=f"{settings.API_V1_PREFIX}/contextual", 
     tags=["Contextual Intelligence"]
 )

@@ -4,6 +4,8 @@ Starts the API server with uvicorn.
 """
 import os
 import sys
+# Add project root to sys.path for gemini import
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 import uvicorn
 from src.api.routes import app
 from src.config.settings import get_settings

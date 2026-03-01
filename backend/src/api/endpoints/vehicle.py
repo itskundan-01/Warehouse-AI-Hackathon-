@@ -13,10 +13,10 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Depends, File, Form, UploadFile, Query, Path, HTTPException, status
 from fastapi.responses import JSONResponse
 
-from src.modules.vehicle_recognition.plate_detector import LicensePlateDetector
-from src.modules.vehicle_recognition.ocr import LicensePlateOCR
+from src.modules.vehicle_recognition.integrated_detector import IntegratedLicensePlateDetector, LicensePlateOCR
 from src.modules.vehicle_recognition.vehicle_tracker import VehicleTracker
 from src.database import db  # Use the MongoDB client directly
+from src.gemini import gemini_ocr_plate_image
 
 # Create router
 router = APIRouter()
@@ -45,7 +45,7 @@ async def detect_vehicle(
         with open(f"{image_dir}/{image_path}", "wb") as image_file:
             image_file.write(await image.read())
         # Initialize detectors
-        plate_detector = LicensePlateDetector()
+        plate_detector = IntegratedLicensePlateDetector()
         ocr = LicensePlateOCR()
         # Detect license plate
         plate_box = plate_detector.detect(f"{image_dir}/{image_path}")
@@ -182,8 +182,10 @@ async def process_vehicle_video(
         )
         
         return {
+            "success": True,
             "status": "success",
             "message": "Video processed successfully",
+            "processing_id": result.get("processing_id", f"vehicle_{location}_{timestamp}"),
             "data": result,
             "video_file": video_filename
         }
@@ -216,66 +218,79 @@ async def stream_vehicle_detection(location: str):
 def process_video_for_vehicles(video_path: str, location: str):
     """
     Process video file for vehicle and license plate detection.
+    Optimized for speed with early exit conditions.
     """
-    plate_detector = LicensePlateDetector()
+    import time
+    start_time = time.time()
+    max_processing_time = 60  # Maximum 60 seconds processing time
+    
+    # Use even lighter confidence threshold for faster processing
+    plate_detector = IntegratedLicensePlateDetector(confidence_threshold=0.2)
     ocr = LicensePlateOCR()
     tracker = VehicleTracker()
     
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
     results = []
     frame_count = 0
     detected_vehicles = {}
-    
+    recent_plates = {}  # For duplicate detection
+    duplicate_frame_window = int(fps * 5)  # 5 seconds window
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
-            
-        # Process every 30th frame (approximately 1 frame per second for 30fps video)
-        if frame_count % 30 == 0:
-            # Detect license plates in frame
+        frame_skip = max(1, int(fps * 3))
+        if frame_count % frame_skip == 0:
+            print(f"Processing frame {frame_count}/{total_frames} ({frame_count/total_frames*100:.1f}%)")
             detections = plate_detector.detect_from_frame(frame)
-            
             for detection in detections:
-                # Extract license plate text
-                plate_text = ocr.extract_text_from_detection(frame, detection)
-                
-                if plate_text and len(plate_text) > 3:  # Valid plate text
-                    timestamp_seconds = frame_count / fps
-                    
-                    # Track vehicle
-                    tracking_data = tracker.update(plate_text, location)
-                    vehicle_id = tracking_data.get("tracking_id")
-                    
-                    if plate_text not in detected_vehicles:
-                        detected_vehicles[plate_text] = {
-                            "first_seen": timestamp_seconds,
-                            "last_seen": timestamp_seconds,
-                            "confidence_scores": [float(detection.get("confidence", 0.8))],
-                            "vehicle_id": vehicle_id
-                        }
-                    else:
-                        detected_vehicles[plate_text]["last_seen"] = timestamp_seconds
-                        detected_vehicles[plate_text]["confidence_scores"].append(
-                            float(detection.get("confidence", 0.8))
-                        )
-                    
-                    result = {
-                        "timestamp": timestamp_seconds,
-                        "frame_number": frame_count,
-                        "license_plate": plate_text,
-                        "confidence": float(detection.get("confidence", 0.8)),
-                        "bbox": [int(x) for x in detection.get("bbox", [0, 0, 0, 0])],
-                        "vehicle_id": vehicle_id,
-                        "location": location
+                bbox = detection.get("bbox", [0, 0, 0, 0])
+                x1, y1, x2, y2 = [int(x) for x in bbox]
+                plate_img = frame[y1:y2, x1:x2]
+                # Use Gemini OCR
+                plate_text = gemini_ocr_plate_image(plate_img)
+                if not plate_text or len(plate_text) <= 3:
+                    continue
+                # Duplicate detection (frame-based window)
+                if plate_text in recent_plates and (frame_count - recent_plates[plate_text]) < duplicate_frame_window:
+                    continue
+                recent_plates[plate_text] = frame_count
+                timestamp_seconds = frame_count / fps
+                tracking_data = tracker.update(plate_text, location)
+                vehicle_id = tracking_data.get("tracking_id")
+                if plate_text not in detected_vehicles:
+                    detected_vehicles[plate_text] = {
+                        "first_seen": timestamp_seconds,
+                        "last_seen": timestamp_seconds,
+                        "confidence_scores": [float(detection.get("confidence", 0.8))],
+                        "vehicle_id": vehicle_id
                     }
-                    results.append(result)
-        
+                else:
+                    detected_vehicles[plate_text]["last_seen"] = timestamp_seconds
+                    detected_vehicles[plate_text]["confidence_scores"].append(
+                        float(detection.get("confidence", 0.8))
+                    )
+                result = {
+                    "timestamp": timestamp_seconds,
+                    "frame_number": frame_count,
+                    "license_plate": plate_text,
+                    "confidence": float(detection.get("confidence", 0.8)),
+                    "bbox": bbox,
+                    "vehicle_id": vehicle_id,
+                    "location": location
+                }
+                results.append(result)
+        # Early exit optimization
+        if (len(detected_vehicles) >= 2 or 
+            (len(detected_vehicles) >= 1 and frame_count > total_frames * 0.3)):
+            print(f"Early exit: Found {len(detected_vehicles)} vehicles, stopping processing")
+            break
+        if time.time() - start_time > max_processing_time:
+            print(f"Timeout: Processing stopped after {max_processing_time} seconds")
+            break
         frame_count += 1
-    
     cap.release()
     
     # Compile summary
@@ -325,7 +340,7 @@ async def generate_vehicle_detection_stream(location: str):
     """
     Generate real-time vehicle detection stream.
     """
-    plate_detector = LicensePlateDetector()
+    plate_detector = IntegratedLicensePlateDetector()
     ocr = LicensePlateOCR()
     
     # Simulate real-time CCTV feed processing

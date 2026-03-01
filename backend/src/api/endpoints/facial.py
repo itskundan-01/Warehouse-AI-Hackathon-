@@ -227,8 +227,10 @@ async def process_facial_video(
         )
         
         return {
+            "success": True,
             "status": "success",
             "message": "Video processed successfully",
+            "processing_id": result.get("processing_id", f"facial_{location}_{timestamp}"),
             "data": result,
             "video_file": video_filename
         }

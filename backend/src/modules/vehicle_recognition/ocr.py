@@ -1,6 +1,6 @@
 """
-License Plate OCR module.
-Extracts text from license plate images using OCR techniques.
+Enhanced License Plate OCR module using EasyOCR.
+Extracts text from license plate images using advanced OCR techniques.
 """
 import random
 import string
@@ -9,33 +9,80 @@ import cv2
 import numpy as np
 import re
 
+# EasyOCR integration
+try:
+    import easyocr
+    EASYOCR_AVAILABLE = True
+except ImportError:
+    EASYOCR_AVAILABLE = False
+
+# Fallback: PaddleOCR
+try:
+    from paddleocr import PaddleOCR
+    PADDLEOCR_AVAILABLE = True
+except ImportError:
+    PADDLEOCR_AVAILABLE = False
+
 from src.config.logging_config import get_logger
 
 # Initialize logger
 logger = get_logger(__name__)
 
 class LicensePlateOCR:
-    """Class for extracting text from license plate images using PaddleOCR."""
+    """Enhanced class for extracting text from license plate images using EasyOCR."""
     
-    def __init__(self):
-        """Initialize the OCR processor."""
-        self.ocr = None
-        self._initialize_paddleocr()
-        logger.info("LicensePlateOCR initialized")
+    def __init__(self, languages: List[str] = ['en'], use_gpu: bool = True):
+        """
+        Initialize the OCR processor.
+        
+        Args:
+            languages: List of languages for OCR (default: ['en'])
+            use_gpu: Whether to use GPU acceleration
+        """
+        self.languages = languages
+        self.use_gpu = use_gpu
+        
+        # Initialize OCR engines
+        self.easyocr_reader = None
+        self.paddleocr_reader = None
+        
+        self._initialize_ocr_engines()
+        
+        logger.info("Enhanced LicensePlateOCR initialized")
     
-    def _initialize_paddleocr(self):
-        """Initialize PaddleOCR for text extraction."""
-        try:
-            from paddleocr import PaddleOCR
-            # Initialize PaddleOCR with English language
-            self.ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
-            logger.info("PaddleOCR initialized successfully")
-        except ImportError:
-            logger.warning("PaddleOCR not installed. Using simulated OCR.")
-            self.ocr = None
-        except Exception as e:
-            logger.warning(f"Failed to initialize PaddleOCR: {e}. Using simulated OCR.")
-            self.ocr = None
+    def _initialize_ocr_engines(self):
+        """Initialize available OCR engines."""
+        # Try to initialize EasyOCR first (preferred)
+        if EASYOCR_AVAILABLE:
+            try:
+                self.easyocr_reader = easyocr.Reader(
+                    self.languages, 
+                    gpu=self.use_gpu,
+                    verbose=False
+                )
+                logger.info("EasyOCR initialized successfully")
+            except Exception as e:
+                logger.warning(f"Failed to initialize EasyOCR: {e}")
+                self.easyocr_reader = None
+        else:
+            logger.warning("EasyOCR not available. Install with: pip install easyocr")
+        
+        # Try to initialize PaddleOCR as fallback
+        if PADDLEOCR_AVAILABLE and self.easyocr_reader is None:
+            try:
+                self.paddleocr_reader = PaddleOCR(
+                    use_angle_cls=True, 
+                    lang='en', 
+                    show_log=False,
+                    use_gpu=self.use_gpu
+                )
+                logger.info("PaddleOCR initialized as fallback")
+            except Exception as e:
+                logger.warning(f"Failed to initialize PaddleOCR: {e}")
+                self.paddleocr_reader = None
+        
+        if not self.easyocr_reader and not self.paddleocr_reader:
+            logger.warning("No OCR engines available. Using simulated OCR.")
     
     def extract_text(self, image_path: str, plate_bbox: Optional[np.ndarray] = None) -> str:
         """

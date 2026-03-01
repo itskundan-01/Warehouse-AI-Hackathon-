@@ -6,6 +6,7 @@ python-dotenv>=1.0.0
 redis>=4.6.0
 celery>=5.3.1
 motor>=3.3.1  # Async MongoDB driver
+aiofiles>=23.1.0  # Async file handling
 
 # Security - Cross-platform compatible
 python-jose>=3.3.0
@@ -18,10 +19,22 @@ pytest>=7.3.1
 pytest-cov>=4.1.0
 httpx>=0.24.1
 
-# ML libraries - Install as needed
-# These are commented out to avoid issues during initial setup
+# ML libraries - Working configuration for Python 3.12
+# YOLOv8 requires specific versions for compatibility
 opencv-python>=4.11.0
-# torch>=2.0.0  # Install with: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-# ultralytics>=8.0.0  # YOLOv8
+torch>=2.2.0  # PyTorch with CPU support
+torchvision>=0.17.0
+ultralytics>=8.3.0  # YOLOv8
 
-numpy>=2.2.5
+# OCR and Computer Vision
+easyocr>=1.7.0  # License plate text recognition
+pillow>=10.0.0  # Image processing support
+
+# Tracking (Optional - install separately if needed)
+# deep-sort-realtime>=1.3.0  # DeepSORT tracking
+
+# NumPy compatibility - Use v1.x for PyTorch/YOLOv8 compatibility
+numpy>=1.26.0,<2.0.0
+
+# Note: This configuration requires Python 3.12 or earlier
+# Python 3.13 is not yet supported by PyTorch pre-built wheels

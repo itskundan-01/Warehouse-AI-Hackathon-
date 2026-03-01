@@ -18,6 +18,7 @@ from src.database import db  # Use the MongoDB client directly
 from src.modules.gunny_counter.detector import GunnyBagDetector
 from src.modules.gunny_counter.counter import GunnyBagCounter
 from src.modules.gunny_counter.volumetric import VolumetricEstimator
+from src.modules.gunny_counter.improved_detector import ImprovedGunnyBagDetector
 
 # Create router
 router = APIRouter()
@@ -51,19 +52,43 @@ async def count_gunny_bags(
         with open(f"{image_dir}/{image_path}", "wb") as image_file:
             image_file.write(await image.read())
         detector = GunnyBagDetector()
-        counter = GunnyBagCounter()
+        improved_detector = ImprovedGunnyBagDetector()
+        counter = GunnyBagCounter(enable_line_crossing=True, use_improved_detector=True)  # Enable enhanced detection
         volumetric = VolumetricEstimator()
-        detections = detector.detect(image_path)
-        count = counter.count(detections)
+        
+        # Read the image for processing
+        img_array = cv2.imread(f"{image_dir}/{image_path}")
+        
+        # Use improved detector for better accuracy
+        detections = improved_detector.detect(img_array)
+        
+        # Fallback to original detector if improved detector finds nothing
+        if len(detections) == 0:
+            detections = detector.detect(f"{image_dir}/{image_path}")
+            detector_used = "original"
+        else:
+            detector_used = "improved"
+        
+        count_results = counter.count(detections, img_array)  # Pass frame for line detection
         estimated_volume = volumetric.estimate_volume(detections)
+        
         collection = await get_gunny_collection()
         doc = {
-            "bag_count": count,
+            "static_count": count_results['static_count'],
+            "crossing_count": count_results.get('crossing_count'),
+            "total_tracked": count_results.get('total_tracked'),
+            "crossing_line_detected": count_results.get('crossing_line_detected'),
             "estimated_volume": estimated_volume,
             "location": location,
             "image_path": image_path,
             "confidence_score": getattr(detector, 'last_confidence', None),
-            "bag_metadata": {"detection_boxes": getattr(detections, 'tolist', lambda: detections)()},
+            "detector_used": detector_used,
+            "bag_metadata": {
+                "detection_boxes": getattr(detections, 'tolist', lambda: detections)(),
+                "line_crossing_enabled": counter.enable_line_crossing,
+                "improved_detector_enabled": counter.use_improved_detector,
+                "red_line_coordinates": improved_detector.get_red_line()
+            },
             "timestamp": datetime.utcnow()
         }
         result = await collection.insert_one(doc)
@@ -191,8 +216,10 @@ async def process_gunny_video(
         )
         
         return {
+            "success": True,
             "status": "success",
             "message": "Video processed successfully",
+            "processing_id": result.get("processing_id", f"gunny_{location}_{timestamp}"),
             "data": result,
             "video_file": video_filename
         }
@@ -221,12 +248,146 @@ async def stream_gunny_analysis(location: str):
         )
 
 
+@router.post(
+    "/count-with-tracking", 
+    response_model=None,
+    status_code=status.HTTP_201_CREATED
+)
+async def count_gunny_bags_with_line_crossing(
+    location: str,
+    image: UploadFile = File(...),
+    return_visualization: bool = Query(False, description="Return image with tracking visualization")
+):
+    """
+    Count gunny bags with enhanced line-crossing detection and tracking.
+    Specifically designed to detect red vertical line and count bags crossing it.
+    """
+    try:
+        # Create directory for storing images
+        image_dir = "./data/images/gunny"
+        os.makedirs(image_dir, exist_ok=True)
+        image_path = f"gunny_tracking_{location}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+        full_image_path = f"{image_dir}/{image_path}"
+        
+        with open(full_image_path, "wb") as image_file:
+            image_file.write(await image.read())
+        
+        # Initialize modules with line-crossing enabled
+        detector = GunnyBagDetector()
+        improved_detector = ImprovedGunnyBagDetector()
+        counter = GunnyBagCounter(enable_line_crossing=True, use_improved_detector=True)
+        volumetric = VolumetricEstimator()
+        
+        # Read the image for processing
+        img_array = cv2.imread(full_image_path)
+        if img_array is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not read the uploaded image"
+            )
+        
+        # Use improved detector for better accuracy
+        detections = improved_detector.detect(img_array)
+        
+        # Fallback to original detector if improved detector finds nothing
+        if len(detections) == 0:
+            detections = detector.detect(full_image_path)
+            detector_used = "original"
+        else:
+            detector_used = "improved"
+        
+        # Count with line-crossing detection
+        count_results = counter.count(detections, img_array)
+        
+        # Estimate volume
+        estimated_volume = volumetric.estimate_volume(detections)
+        
+        # Prepare response data
+        response_data = {
+            "static_count": count_results['static_count'],
+            "crossing_count": count_results.get('crossing_count', 0),
+            "total_tracked": count_results.get('total_tracked', 0),
+            "active_tracks": count_results.get('active_tracks', 0),
+            "crossing_line_detected": count_results.get('crossing_line_detected', False),
+            "estimated_volume": estimated_volume,
+            "location": location,
+            "image_path": image_path,
+            "detector_used": detector_used,
+            "confidence_score": getattr(detector, 'last_confidence', None),
+            "line_crossing_enabled": counter.enable_line_crossing,
+            "red_line_coordinates": improved_detector.get_red_line(),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        # Add visualization if requested
+        if return_visualization:
+            vis_frame = counter.get_tracking_visualization(img_array)
+            if vis_frame is not None:
+                # Save visualization image
+                vis_path = f"vis_{image_path}"
+                vis_full_path = f"{image_dir}/{vis_path}"
+                cv2.imwrite(vis_full_path, vis_frame)
+                response_data["visualization_path"] = vis_path
+        
+        # Save to database
+        collection = await get_gunny_collection()
+        doc = {
+            **response_data,
+            "bag_metadata": {
+                "detection_boxes": getattr(detections, 'tolist', lambda: detections)(),
+                "line_crossing_enabled": True,
+                "tracking_method": "red_line_crossing"
+            },
+            "timestamp": datetime.utcnow()
+        }
+        
+        result = await collection.insert_one(doc)
+        response_data["_id"] = str(result.inserted_id)
+        
+        return response_data
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process gunny bag tracking: {str(e)}"
+        )
+
+
+@router.post(
+    "/reset-crossing-count",
+    response_model=None
+)
+async def reset_crossing_count():
+    """
+    Reset the line-crossing count to zero.
+    Useful for starting a new counting session.
+    """
+    try:
+        # Create a temporary counter to reset (in real implementation, 
+        # this would be managed by a persistent service)
+        counter = GunnyBagCounter(enable_line_crossing=True)
+        counter.reset_crossing_count()
+        
+        return {
+            "status": "success",
+            "message": "Crossing count reset to zero",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to reset crossing count: {str(e)}"
+        )
+
+
 def process_video_for_gunny_bags(video_path: str, location: str):
     """
-    Process video file for gunny bag detection and counting.
+    Process video file for gunny bag detection and counting with line-crossing tracking.
     """
     detector = GunnyBagDetector()
-    counter = GunnyBagCounter()
+    improved_detector = ImprovedGunnyBagDetector()
+    counter = GunnyBagCounter(enable_line_crossing=True, use_improved_detector=True)  # Enable enhanced detection
     volumetric = VolumetricEstimator()
     
     cap = cv2.VideoCapture(video_path)
@@ -241,90 +402,80 @@ def process_video_for_gunny_bags(video_path: str, location: str):
         if not ret:
             break
             
-        # Process every 30th frame (approximately 1 frame per second for 30fps video)
-        if frame_count % 30 == 0:
-            detections_list = detector.detect_from_frame(frame)
-            # Convert to numpy array format expected by counter
-            detections = np.array([[d["bbox"][0], d["bbox"][1], d["bbox"][2], d["bbox"][3], d["confidence"], d["class_id"]] for d in detections_list]) if detections_list else np.array([])
-            count = counter.count(detections)
-            volume = volumetric.estimate_volume(detections)
-            
-            timestamp_seconds = frame_count / fps
-            
-            result = {
-                "timestamp": timestamp_seconds,
-                "frame_number": frame_count,
-                "gunny_count": count,
-                "estimated_volume": volume,
-                "detections": len(detections) if len(detections) > 0 else 0,
-                "location": location
-            }
-            results.append(result)
-        
         frame_count += 1
+        
+        # Process every 30th frame (approximately 1 second at 30fps)
+        if frame_count % 30 == 0:
+            try:
+                # Use improved detector for better accuracy
+                detections = improved_detector.detect(frame)
+                
+                # Fallback to original detector if improved detector finds nothing
+                if len(detections) == 0:
+                    # Save frame temporarily for original detector
+                    temp_frame_path = f"./data/temp_frame_{frame_count}.jpg"
+                    cv2.imwrite(temp_frame_path, frame)
+                    detections = detector.detect(temp_frame_path)
+                    # Clean up temp file
+                    if os.path.exists(temp_frame_path):
+                        os.remove(temp_frame_path)
+                    detector_used = "original"
+                else:
+                    detector_used = "improved"
+                
+                count_results = counter.count(detections, frame)
+                estimated_volume = volumetric.estimate_volume(detections)
+                
+                # Calculate timestamp in video
+                timestamp_seconds = frame_count / fps
+                
+                frame_result = {
+                    "frame_number": frame_count,
+                    "timestamp_seconds": timestamp_seconds,
+                    "static_count": count_results['static_count'],
+                    "crossing_count": count_results.get('crossing_count', 0),
+                    "total_tracked": count_results.get('total_tracked', 0),
+                    "crossing_line_detected": count_results.get('crossing_line_detected', False),
+                    "estimated_volume": estimated_volume,
+                    "detector_used": detector_used,
+                    "location": location
+                }
+                
+                results.append(frame_result)
+                    
+            except Exception as e:
+                print(f"Error processing frame {frame_count}: {e}")
+                continue
     
     cap.release()
     
-    # Convert numpy data types to Python native types for MongoDB compatibility
-    clean_results = []
-    for result in results:
-        clean_result = {
-            "timestamp": float(result["timestamp"]),
-            "frame_number": int(result["frame_number"]),
-            "gunny_count": int(result["gunny_count"]) if isinstance(result["gunny_count"], (np.integer, np.floating)) else result["gunny_count"],
-            "estimated_volume": float(result["estimated_volume"]) if isinstance(result["estimated_volume"], (np.floating, np.integer)) else result["estimated_volume"],
-            "detections": int(result["detections"]),
-            "location": str(result["location"])
-        }
-        clean_results.append(clean_result)
-    
-    # Save to database
-    summary = {
-        "location": location,
-        "video_file": video_path,
-        "total_frames": int(total_frames),
-        "fps": float(fps),
-        "duration_seconds": float(total_frames / fps),
-        "analysis_results": clean_results,
-        "max_count": int(max([r["gunny_count"] for r in clean_results])) if clean_results else 0,
-        "avg_count": float(sum([r["gunny_count"] for r in clean_results]) / len(clean_results)) if clean_results else 0.0,
-        "timestamp": datetime.utcnow(),
-        "processing_type": "video_analysis"
-    }
-    
-    # Store in database using proper async context
-    try:
-        # Get current event loop or create a new one
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+    # Calculate summary statistics
+    if results:
+        max_static_count = max(r['static_count'] for r in results)
+        final_crossing_count = counter.get_crossing_count()
+        avg_volume = sum(r['estimated_volume'] for r in results) / len(results)
         
-        collection = loop.run_until_complete(get_gunny_collection())
-        result = loop.run_until_complete(collection.insert_one(summary))
-        processing_id = str(result.inserted_id)
-    except Exception as db_error:
-        print(f"Database error: {db_error}")
-        # If database fails, still return processing results
-        processing_id = "local_processing"
+        summary = {
+            "total_frames_processed": len(results),
+            "max_static_count": max_static_count,
+            "final_crossing_count": final_crossing_count,
+            "average_estimated_volume": avg_volume,
+            "video_duration_seconds": total_frames / fps if fps > 0 else 0,
+            "line_crossing_detected": any(r['crossing_line_detected'] for r in results),
+            "frame_results": results
+        }
+    else:
+        summary = {
+            "total_frames_processed": 0,
+            "max_static_count": 0,
+            "final_crossing_count": 0,
+            "average_estimated_volume": 0,
+            "video_duration_seconds": 0,
+            "line_crossing_detected": False,
+            "frame_results": []
+        }
     
-    # Return response without MongoDB ObjectId
-    response = {
-        "success": True,
-        "processing_id": processing_id,
-        "location": summary["location"],
-        "total_frames": summary["total_frames"],
-        "fps": summary["fps"],
-        "duration_seconds": summary["duration_seconds"],
-        "max_count": summary["max_count"],
-        "avg_count": summary["avg_count"],
-        "analysis_results": summary["analysis_results"][:10],  # Limit results in response for performance
-        "total_analysis_frames": len(summary["analysis_results"]),
-        "processing_type": summary["processing_type"]
-    }
-    
-    return response
+    return summary
 
 
 async def generate_gunny_analysis_stream(location: str):

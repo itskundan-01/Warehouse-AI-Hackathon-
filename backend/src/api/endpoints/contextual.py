@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 import os
 from concurrent.futures import ThreadPoolExecutor
+from ultralytics import YOLO
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -142,8 +143,10 @@ async def process_contextual_video(
         )
         
         return {
+            "success": True,
             "status": "success",
             "message": "Video processed successfully",
+            "processing_id": result.get("processing_id", f"contextual_{location}_{timestamp}"),
             "data": result,
             "video_file": video_filename
         }
@@ -228,145 +231,101 @@ def generate_timeline_data(events: List[Dict]) -> List[Dict]:
     return sorted(timeline, key=lambda x: x["time"])
 
 def extract_entities_from_query(query: str) -> List[str]:
-    """Extract entities from natural language query."""
-    entities = []
-    query_lower = query.lower()
-    
-    # Simple entity extraction
-    if "people" in query_lower or "person" in query_lower:
-        entities.append("person")
-    if "motion" in query_lower or "movement" in query_lower:
-        entities.append("motion")
-    if "object" in query_lower or "item" in query_lower:
-        entities.append("object")
-    if "event" in query_lower or "activity" in query_lower:
-        entities.append("event")
-    if "time" in query_lower or "when" in query_lower:
-        entities.append("temporal")
-    
-    return entities
+    """Extract keywords/entities from natural language query."""
+    keywords = []
+    for word in ['motion', 'object', 'enter', 'anomaly', 'detected']:
+        if word in query.lower():
+            keywords.append(word)
+    return keywords
 
 def classify_query_type(query: str) -> str:
-    """Classify the type of query."""
-    query_lower = query.lower()
-    
-    if any(word in query_lower for word in ["how many", "count", "number"]):
-        return "quantitative"
-    elif any(word in query_lower for word in ["when", "what time", "timestamp"]):
-        return "temporal"
-    elif any(word in query_lower for word in ["what", "which", "describe"]):
-        return "descriptive"
-    elif any(word in query_lower for word in ["where", "location", "zone"]):
-        return "spatial"
-    else:
-        return "general"
+    """Classify query type based on keywords."""
+    q = query.lower()
+    if q.startswith('show') or 'list' in q:
+        return 'list_events'
+    return 'information_retrieval'
 
-def generate_query_results(query: str, processed_query: Dict) -> List[Dict]:
-    """Generate mock results for natural language query."""
+def generate_query_results(query: str, processed_query: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Generate results for a natural language query by filtering event logs."""
     results = []
-    
-    # Generate relevant mock results based on query type
-    if "people" in query.lower():
-        results.extend([
-            {"type": "detection", "description": "3 people detected between 15-45 seconds", "timestamp": 15},
-            {"type": "detection", "description": "1 person detected at 78 seconds", "timestamp": 78}
-        ])
-    
-    if "motion" in query.lower():
-        results.extend([
-            {"type": "motion", "description": "Significant motion detected in Zone A", "timestamp": 23},
-            {"type": "motion", "description": "Motion detected near entrance", "timestamp": 67}
-        ])
-    
-    if "event" in query.lower():
-        results.extend([
-            {"type": "event", "description": "Unusual activity detected", "timestamp": 45},
-            {"type": "event", "description": "Object left unattended", "timestamp": 89}
-        ])
-    
-    # Default results if no specific matches
-    if not results:
-        results = [
-            {"type": "general", "description": "Analysis completed with 8 events detected", "timestamp": 0},
-            {"type": "general", "description": "Motion detected in multiple zones", "timestamp": 30}
-        ]
-    
+    pids = processed_query.get('entities') or []  # using entities as identifiers
+    # If no specific IDs, scan all JSON logs
+    files = os.listdir('data/contextual')
+    for fname in files:
+        if fname.endswith('.json'):
+            with open(f'data/contextual/{fname}') as f:
+                data = json.load(f)
+            for ev in data.get('events', []):
+                if not processed_query['entities']:
+                    results.append(ev)
+                else:
+                    # filter by event type keywords
+                    if any(k in ev.get('type', '').lower() or k in ev.get('description','').lower() for k in processed_query['entities']):
+                        results.append(ev)
     return results
 
 def process_video_for_contextual_analysis(video_path: str, location: str):
     """
-    Process video file for contextual intelligence analysis.
-    Detects events, behaviors, and generates queryable content.
+    Process video for contextual intelligence: detect motion and objects, log events to JSON.
     """
+    from datetime import datetime
+    processing_id = f"contextual_{location}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
-    results = []
-    frame_count = 0
-    detected_events = {}
-    
-    # Event types to detect
-    event_types = [
-        "person_movement", "vehicle_entry", "object_placement", 
-        "crowding", "unusual_activity", "security_breach"
-    ]
-    
-    while cap.isOpened():
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25
+    frame_skip = int(fps)
+    fgbg = cv2.createBackgroundSubtractorMOG2()
+    model = YOLO('yolov8n.pt')
+    events = []
+    frame_idx = 0
+    event_counter = 0
+    while True:
         ret, frame = cap.read()
         if not ret:
             break
-            
-        # Process every 30th frame (approximately 1 frame per second for 30fps video)
-        if frame_count % 30 == 0:
-            timestamp_seconds = frame_count / fps
-            
-            # Simulate contextual analysis
-            events_detected = analyze_frame_for_events(frame, timestamp_seconds)
-            
-            for event in events_detected:
-                event_id = f"{event['type']}_{frame_count}"
-                
-                result = {
-                    "timestamp": timestamp_seconds,
-                    "frame_number": frame_count,
-                    "event_id": event_id,
-                    "event_type": event["type"],
-                    "confidence": event["confidence"],
-                    "description": event["description"],
-                    "location": location,
-                    "severity": event.get("severity", "normal"),
-                    "bbox": event.get("bbox", [0, 0, 0, 0]),
-                    "context": event.get("context", "")
-                }
-                results.append(result)
-                
-                # Track event types
-                if event["type"] not in detected_events:
-                    detected_events[event["type"]] = []
-                detected_events[event["type"]].append(result)
-        
-        frame_count += 1
-    
+        if frame_idx % frame_skip == 0:
+            timestamp = frame_idx / fps
+            # motion detection
+            mask = fgbg.apply(frame)
+            motion_pixels = np.sum(mask > 244)
+            if motion_pixels > frame.shape[0] * frame.shape[1] * 0.01:
+                event_counter += 1
+                events.append({
+                    'id': f'event_{event_counter}',
+                    'type': 'motion_detected',
+                    'description': f'Motion detected at {timestamp:.2f}s',
+                    'timestamp': timestamp,
+                    'confidence': None,
+                    'severity': 'medium',
+                    'location': location
+                })
+            # object detection
+            results = model(frame)
+            for res in results:
+                for box in res.boxes:
+                    cls = int(box.cls[0])
+                    conf = float(box.conf[0])
+                    label = model.names[cls]
+                    if conf > 0.5:
+                        event_counter += 1
+                        events.append({
+                            'id': f'event_{event_counter}',
+                            'type': 'object_detected',
+                            'description': f"{label} detected at {timestamp:.2f}s",
+                            'timestamp': timestamp,
+                            'confidence': conf,
+                            'severity': 'high' if conf > 0.7 else 'low',
+                            'location': location,
+                            'object': label
+                        })
+        frame_idx += 1
     cap.release()
-    
-    # Generate summary with natural language queryable content
-    summary = {
-        "location": location,
-        "video_file": video_path,
-        "total_frames": total_frames,
-        "fps": fps,
-        "duration_seconds": total_frames / fps,
-        "detected_events": detected_events,
-        "all_events": results,
-        "event_types": list(detected_events.keys()),
-        "total_events": len(results),
-        "timestamp": datetime.utcnow(),
-        "processing_type": "contextual_analysis",
-        "queryable_content": generate_queryable_content(results, location)
-    }
-    
-    return summary
+    # save events
+    os.makedirs('data/contextual', exist_ok=True)
+    filepath = f'data/contextual/{processing_id}.json'
+    with open(filepath, 'w') as f:
+        json.dump({'processing_id': processing_id, 'status': 'completed', 'events': events}, f, default=str)
+    return {'processing_id': processing_id, 'status': 'completed', 'events': events}
+
 
 def analyze_frame_for_events(frame, timestamp):
     """

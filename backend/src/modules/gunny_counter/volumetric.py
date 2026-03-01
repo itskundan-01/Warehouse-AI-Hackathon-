@@ -155,7 +155,14 @@ class VolumetricEstimator:
         # Calculate relative sizes of each bag (normalized area)
         areas = []
         for det in detections:
-            x1, y1, x2, y2 = det[:4]
+            # Handle different detection formats
+            if isinstance(det, dict):
+                # Improved detector format: dict with 'bbox' key
+                x1, y1, x2, y2 = det['bbox']
+            else:
+                # Original detector format: numpy array [x1, y1, x2, y2, conf, class]
+                x1, y1, x2, y2 = det[:4]
+            
             width = x2 - x1
             height = y2 - y1
             area = width * height
