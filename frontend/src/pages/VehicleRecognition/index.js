@@ -40,7 +40,8 @@ import {
   Visibility as VisibilityIcon,
   Check as CheckIcon,
   Block as BlockIcon,
-  LocalShipping as VehicleIcon
+  LocalShipping as VehicleIcon,
+  TextFields as PlateIcon
 } from '@mui/icons-material';
 
 import {
@@ -49,6 +50,7 @@ import {
   fetchUnauthorizedVehicles
 } from '../../store/slices/vehicleSlice';
 import vehicleService from '../../services/api/vehicleService';
+import PlateDetection from '../../components/modules/PlateDetection';
 
 // Tab panel component for tab content
 function TabPanel(props) {
@@ -259,6 +261,12 @@ const VehicleRecognitionPage = () => {
             sx={{ gap: 1 }}
           />
           <Tab 
+            icon={<PlateIcon />} 
+            label="Plate Detection" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
+          <Tab 
             icon={<ViewListIcon />} 
             label="Vehicle Records" 
             iconPosition="start"
@@ -429,8 +437,13 @@ const VehicleRecognitionPage = () => {
         </Grid>
       </TabPanel>
 
-      {/* Vehicle Records tab */}
+      {/* Plate Detection tab */}
       <TabPanel value={tabValue} index={1}>
+        <PlateDetection />
+      </TabPanel>
+
+      {/* Vehicle Records tab */}
+      <TabPanel value={tabValue} index={2}>
         <Paper sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h6">
@@ -535,7 +548,7 @@ const VehicleRecognitionPage = () => {
       </TabPanel>
 
       {/* Unauthorized Vehicles tab */}
-      <TabPanel value={tabValue} index={2}>
+      <TabPanel value={tabValue} index={3}>
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>
             Unauthorized Vehicles
@@ -602,7 +615,7 @@ const VehicleRecognitionPage = () => {
       </TabPanel>
 
       {/* Analytics tab */}
-      <TabPanel value={tabValue} index={3}>
+      <TabPanel value={tabValue} index={4}>
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>
             Vehicle Analytics

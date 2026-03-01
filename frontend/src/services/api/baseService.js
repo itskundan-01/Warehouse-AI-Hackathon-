@@ -14,6 +14,115 @@ export const apiClient = axios.create({
 });
 
 /**
+ * WebSocket connection for real-time updates
+ */
+export class WebSocketService {
+  constructor() {
+    this.ws = null;
+    this.listeners = new Map();
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectDelay = 1000;
+  }
+
+  connect(url = 'ws://localhost:8000/ws/realtime') {
+    try {
+      this.ws = new WebSocket(url);
+      
+      this.ws.onopen = () => {
+        console.log('🔗 WebSocket connected');
+        this.reconnectAttempts = 0;
+        this.notifyListeners('connected', { status: 'connected' });
+      };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.notifyListeners('message', data);
+          this.notifyListeners(data.type, data);
+        } catch (error) {
+          console.error('WebSocket message parse error:', error);
+        }
+      };
+
+      this.ws.onclose = () => {
+        console.log('📡 WebSocket disconnected');
+        this.notifyListeners('disconnected', { status: 'disconnected' });
+        this.attemptReconnect();
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        this.notifyListeners('error', { error });
+      };
+
+    } catch (error) {
+      console.error('WebSocket connection failed:', error);
+    }
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+  }
+
+  send(data) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(data));
+    } else {
+      console.warn('WebSocket not connected');
+    }
+  }
+
+  on(event, callback) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
+    }
+    this.listeners.get(event).push(callback);
+  }
+
+  off(event, callback) {
+    if (this.listeners.has(event)) {
+      const callbacks = this.listeners.get(event);
+      const index = callbacks.indexOf(callback);
+      if (index > -1) {
+        callbacks.splice(index, 1);
+      }
+    }
+  }
+
+  notifyListeners(event, data) {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event).forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error('WebSocket listener error:', error);
+        }
+      });
+    }
+  }
+
+  attemptReconnect() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      console.log(`🔄 Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      
+      setTimeout(() => {
+        this.connect();
+      }, this.reconnectDelay * this.reconnectAttempts);
+    } else {
+      console.error('❌ Max reconnection attempts reached');
+    }
+  }
+}
+
+// Create singleton WebSocket service instance
+export const webSocketService = new WebSocketService();
+
+/**
  * Helper function to create a mock response that mimics axios response structure
  * @param {Object} data - The mock data to return
  * @param {number} status - HTTP status code (default: 200)

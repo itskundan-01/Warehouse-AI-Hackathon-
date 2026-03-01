@@ -12,12 +12,6 @@ import AuthLayout from './components/common/AuthLayout';
 import AuthInitializer from './components/common/AuthInitializer';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
-// Video Upload Pages
-import GunnyCounterVideoPage from './pages/GunnyCounter/VideoUpload';
-import VehicleRecognitionVideoPage from './pages/VehicleRecognition/VideoUpload';
-import FacialRecognitionVideoPage from './pages/FacialRecognition/VideoUpload';
-import ContextualIntelligenceVideoPage from './pages/ContextualIntelligence/VideoUpload';
-
 function App() {
   return (
     <AuthInitializer>
@@ -36,15 +30,10 @@ function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="gunny-counter" element={<GunnyCounterPage />} />
-          <Route path="gunny-counter/video" element={<GunnyCounterVideoPage />} />
           <Route path="vehicle-recognition" element={<VehicleRecognitionPage />} />
-          <Route path="vehicle-recognition/video" element={<VehicleRecognitionVideoPage />} />
           <Route path="facial-recognition" element={<FacialRecognitionPage />} />
-          <Route path="facial-recognition/video" element={<FacialRecognitionVideoPage />} />
           <Route path="contextual-intelligence" element={<ContextualIntelligencePage />} />
-          <Route path="contextual-intelligence/video" element={<ContextualIntelligenceVideoPage />} />
-          <Route path="admin" element={<AdminPanelPage />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="admin-panel" element={<AdminPanelPage />} />
         </Route>
       </Routes>
     </AuthInitializer>

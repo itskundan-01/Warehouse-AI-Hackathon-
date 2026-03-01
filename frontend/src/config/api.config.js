@@ -11,10 +11,18 @@ const ENV = process.env.REACT_APP_ENV || 'development';
 
 // Base API URL by environment
 const API_BASE_URLS = {
-  development: 'http://localhost:8000/api/v1',
-  testing: 'http://test-api.warehouse-vision.com/api/v1',
-  staging: 'https://staging-api.warehouse-vision.com/api/v1',
-  production: 'https://api.warehouse-vision.com/api/v1'
+  development: 'http://localhost:8000',
+  testing: 'http://test-api.warehouse-vision.com',
+  staging: 'https://staging-api.warehouse-vision.com',
+  production: 'https://api.warehouse-vision.com'
+};
+
+// WebSocket URLs by environment
+const WS_BASE_URLS = {
+  development: 'ws://localhost:8000',
+  testing: 'ws://test-api.warehouse-vision.com',
+  staging: 'wss://staging-api.warehouse-vision.com',
+  production: 'wss://api.warehouse-vision.com'
 };
 
 // API configuration
@@ -27,6 +35,9 @@ const API_CONFIG = {
   
   // Base URL for API calls
   baseURL: API_BASE_URLS[ENV] || API_BASE_URLS.development,
+  
+  // WebSocket URL for real-time connections
+  wsURL: WS_BASE_URLS[ENV] || WS_BASE_URLS.development,
   
   // API endpoints
   endpoints: {
@@ -66,6 +77,17 @@ const API_CONFIG = {
       authorize: (vehicleId) => `/vehicles/${vehicleId}/authorize`,
       unauthorized: '/vehicles/unauthorized',
       analytics: '/vehicles/analytics'
+    },
+    
+    // License plate detection endpoints (new comprehensive system)
+    plates: {
+      detect: '/plates/detect',
+      history: (plateText) => `/plates/history/${plateText}`,
+      recent: '/plates/recent',
+      stats: '/plates/stats',
+      verify: (plateId) => `/plates/verify/${plateId}`,
+      delete: (detectionId) => `/plates/detection/${detectionId}`,
+      health: '/plates/health'
     },
     
     // Facial recognition endpoints

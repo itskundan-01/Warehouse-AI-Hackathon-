@@ -19,8 +19,7 @@ import {
   Menu,
   MenuItem,
   Tooltip,
-  Badge,
-  Collapse
+  Badge
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -33,10 +32,7 @@ import {
   Settings as SettingsIcon,
   Notifications as NotificationsIcon,
   Logout as LogoutIcon,
-  AdminPanelSettings as AdminIcon,
-  ExpandLess as ExpandLessIcon,
-  ExpandMore as ExpandMoreIcon,
-  VideoLibrary as VideoIcon
+  AdminPanelSettings as AdminIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { toggleSidebar, setSidebarOpen } from '../../store/slices/uiSlice';
@@ -58,7 +54,6 @@ const MainLayout = () => {
   // State for user menu
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
-  const [expandedMenus, setExpandedMenus] = useState({});
   
   // Mock notifications for UI demo
   const notifications = [
@@ -78,14 +73,6 @@ const MainLayout = () => {
     if (isMobile) {
       dispatch(setSidebarOpen(false));
     }
-  };
-
-  // Handle submenu expansion
-  const handleMenuExpand = (itemName) => {
-    setExpandedMenus(prev => ({
-      ...prev,
-      [itemName]: !prev[itemName]
-    }));
   };
   
   // Handle user menu
@@ -118,51 +105,25 @@ const MainLayout = () => {
   
   // Navigation items
   const navigationItems = [
-    { 
-      name: 'Dashboard', 
-      path: '/dashboard', 
-      icon: <DashboardIcon /> 
-    },
-    { 
-      name: 'Facial Recognition', 
-      path: '/facial-recognition', 
-      icon: <PersonIcon />,
-      submenu: [
-        { name: 'Upload Video', path: '/facial-recognition/video' }
-      ]
-    },
-    { 
-      name: 'Vehicle Recognition', 
-      path: '/vehicle-recognition', 
-      icon: <VehicleIcon />,
-      submenu: [
-        { name: 'Upload Video', path: '/vehicle-recognition/video' }
-      ]
-    },
-    { 
-      name: 'Gunny Counter', 
-      path: '/gunny-counter', 
-      icon: <InventoryIcon />,
-      submenu: [
-        { name: 'Upload Video', path: '/gunny-counter/video' }
-      ]
-    },
-    { 
-      name: 'Contextual Intelligence', 
-      path: '/contextual-intelligence', 
-      icon: <SearchIcon />,
-      submenu: [
-        { name: 'Upload Video', path: '/contextual-intelligence/video' }
-      ]
-    }
+    { name: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
+    { name: 'Facial Recognition', path: '/facial-recognition', icon: <PersonIcon /> },
+    { name: 'Vehicle Recognition', path: '/vehicle-recognition', icon: <VehicleIcon /> },
+    { name: 'Gunny Counter', path: '/gunny-counter', icon: <InventoryIcon /> },
+    { name: 'Contextual Intelligence', path: '/contextual-intelligence', icon: <SearchIcon /> }
   ];
   
   // If user is admin, add admin panel
   if (user?.role === 'admin') {
     navigationItems.push({
       name: 'Admin Panel',
-      path: '/admin',
-      icon: <AdminIcon />
+      path: '/admin-panel', // fixed path to match App.js
+      icon: (
+        <Tooltip title="System administration and management">
+          <Badge color="error" variant="dot" overlap="circular">
+            <AdminIcon />
+          </Badge>
+        </Tooltip>
+      )
     });
   }
   
@@ -194,26 +155,6 @@ const MainLayout = () => {
         }}
       >
         <Toolbar sx={{ py: 1 }}>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ 
-              mr: 2,
-              bgcolor: 'primary.main',
-              color: 'white',
-              borderRadius: 2,
-              '&:hover': {
-                bgcolor: 'primary.dark',
-                transform: 'scale(1.05)',
-              },
-              transition: 'all 0.2s ease'
-            }}
-          >
-            {sidebarOpen ? <ChevronLeftIcon /> : <MenuIcon />}
-          </IconButton>
-          
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
             <Box sx={{ 
               width: 40,
@@ -236,6 +177,26 @@ const MainLayout = () => {
               WarehouseVision AI
             </Typography>
           </Box>
+          
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{ 
+              mr: 2,
+              bgcolor: 'primary.main',
+              color: 'white',
+              borderRadius: 2,
+              '&:hover': {
+                bgcolor: 'primary.dark',
+                transform: 'scale(1.05)',
+              },
+              transition: 'all 0.2s ease'
+            }}
+          >
+            {sidebarOpen ? <ChevronLeftIcon /> : <MenuIcon />}
+          </IconButton>
           
           {/* Status indicator */}
           <Box sx={{ 
@@ -455,86 +416,58 @@ const MainLayout = () => {
           },
         }}
       >
-        <Toolbar />
+        {/* APCSCL Branding */}
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          py: 3,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          borderBottom: '1px solid rgba(0,0,0,0.05)',
+          minHeight: 90
+        }}>
+          <Avatar sx={{ width: 56, height: 56, mb: 1, bgcolor: 'white', color: 'primary.main', fontWeight: 700, fontSize: 32, boxShadow: 2 }}>
+            AP
+          </Avatar>
+          <Typography variant="subtitle1" sx={{ color: 'white', fontWeight: 700, letterSpacing: 1, fontSize: 16, textShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+            APCSCL
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'white', opacity: 0.85, fontWeight: 400, fontSize: 12 }}>
+            Andhra Pradesh Civil Supplies
+          </Typography>
+        </Box>
+        
         <Box sx={{ overflow: 'auto', mt: 2 }}>
           <List>
             {navigationItems.map((item) => (
-              <React.Fragment key={item.name}>
-                <ListItem 
-                  button 
-                  onClick={() => item.submenu ? handleMenuExpand(item.name) : handleNavigation(item.path)}
+              <ListItem 
+                button 
+                key={item.name}
+                onClick={() => handleNavigation(item.path)}
+                sx={{
+                  minHeight: 48,
+                  px: 2.5,
+                  justifyContent: sidebarOpen ? 'initial' : 'center',
+                }}
+              >
+                <ListItemIcon
                   sx={{
-                    minHeight: 48,
-                    px: 2.5,
-                    justifyContent: sidebarOpen ? 'initial' : 'center',
+                    minWidth: 0,
+                    mr: sidebarOpen ? 2 : 'auto',
+                    justifyContent: 'center',
                   }}
                 >
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 0,
-                      mr: sidebarOpen ? 2 : 'auto',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary={item.name} 
-                    sx={{ 
-                      display: sidebarOpen ? 'block' : 'none',
-                      whiteSpace: 'nowrap'
-                    }} 
-                  />
-                  {item.submenu && sidebarOpen && (
-                    expandedMenus[item.name] ? <ExpandLessIcon /> : <ExpandMoreIcon />
-                  )}
-                </ListItem>
-                
-                {/* Submenu items */}
-                {item.submenu && (
-                  <Collapse in={expandedMenus[item.name] && sidebarOpen} timeout="auto" unmountOnExit>
-                    <List component="div" disablePadding>
-                      <ListItem 
-                        button
-                        onClick={() => handleNavigation(item.path)}
-                        sx={{
-                          pl: 6,
-                          minHeight: 40,
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 0, mr: 2 }}>
-                          <DashboardIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText 
-                          primary="Main Module"
-                          primaryTypographyProps={{ fontSize: '0.875rem' }}
-                        />
-                      </ListItem>
-                      {item.submenu.map((subItem) => (
-                        <ListItem 
-                          button
-                          key={subItem.name}
-                          onClick={() => handleNavigation(subItem.path)}
-                          sx={{
-                            pl: 6,
-                            minHeight: 40,
-                            fontSize: '0.875rem'
-                          }}
-                        >
-                          <ListItemIcon sx={{ minWidth: 0, mr: 2 }}>
-                            <VideoIcon fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={subItem.name}
-                            primaryTypographyProps={{ fontSize: '0.875rem' }}
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </Collapse>
-                )}
-              </React.Fragment>
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={item.name} 
+                  sx={{ 
+                    display: sidebarOpen ? 'block' : 'none',
+                    whiteSpace: 'nowrap'
+                  }} 
+                />
+              </ListItem>
             ))}
           </List>
           <Divider sx={{ my: 1 }} />

@@ -104,6 +104,113 @@ const ContextualIntelligencePage = () => {
     dispatch(fetchPredictiveAnalytics());
   }, [dispatch]);
 
+  // Replace this line in useEffect or wherever mock data is set:
+  // dispatch(fetchInsights());
+  // With the following mock data for demo:
+
+  const demoMockInsights = [
+    {
+      id: 'evt1',
+      description: '🔥 Fire detected near Loading Dock',
+      insight_type: 'safety',
+      severity: 'high',
+      confidence_score: 0.97,
+      timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
+      metadata: { location: 'Loading Dock', camera: 'CAM002', zone: 'Zone B' },
+      source_modules: ['YOLOv8', 'FireNet']
+    },
+    {
+      id: 'evt2',
+      description: '🚫 Unauthorized person entered Warehouse A',
+      insight_type: 'security',
+      severity: 'high',
+      confidence_score: 0.92,
+      timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+      metadata: { location: 'Warehouse A', camera: 'CAM003', zone: 'Zone A' },
+      source_modules: ['ArcFace', 'DeepSort']
+    },
+    {
+      id: 'evt3',
+      description: '🧑‍🔧 Worker handling gunny bags in Storage Area',
+      insight_type: 'operation',
+      severity: 'low',
+      confidence_score: 0.85,
+      timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+      metadata: { location: 'Storage Area', camera: 'CAM004', zone: 'Zone C' },
+      source_modules: ['YOLOv8', 'SAM']
+    },
+    {
+      id: 'evt4',
+      description: '🚚 Vehicle entered Main Gate (AP16AB1234)',
+      insight_type: 'vehicle',
+      severity: 'medium',
+      confidence_score: 0.88,
+      timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+      metadata: { location: 'Main Gate', camera: 'CAM001', plate: 'AP16AB1234' },
+      source_modules: ['PaddleOCR', 'YOLOv8']
+    },
+    {
+      id: 'evt5',
+      description: '📦 Gunny bags stacked in Zone B',
+      insight_type: 'operation',
+      severity: 'low',
+      confidence_score: 0.81,
+      timestamp: new Date(Date.now() - 1000 * 60 * 20).toISOString(),
+      metadata: { location: 'Zone B', camera: 'CAM005' },
+      source_modules: ['YOLOv8', 'SAM']
+    }
+  ];
+
+  const demoMockAnalytics = {
+    loading: false,
+    error: null,
+    last_updated: new Date().toISOString(),
+    model_accuracy: 0.93,
+    // Add more realistic analytics data as needed
+  };
+
+  // In useEffect, set these mocks to Redux or local state for demo
+  useEffect(() => {
+    // For demo, set mock data directly
+    dispatch({ type: 'context/fetchInsights/fulfilled', payload: { list: demoMockInsights, loading: false, error: null } });
+    dispatch({ type: 'context/fetchPredictiveAnalytics/fulfilled', payload: demoMockAnalytics });
+  }, [dispatch]);
+
+  // Add at the top of the component, after demoMockInsights definition:
+  const demoEventPool = [
+    {
+      id: 'evt6',
+      description: '🚨 Suspicious movement detected near South Perimeter',
+      insight_type: 'anomaly',
+      severity: 'medium',
+      confidence_score: 0.78,
+      timestamp: new Date().toISOString(),
+      metadata: { location: 'South Perimeter', camera: 'CAM005' },
+      source_modules: ['YOLOv8']
+    },
+    {
+      id: 'evt7',
+      description: '🧯 Fire extinguisher used in Zone C',
+      insight_type: 'safety',
+      severity: 'medium',
+      confidence_score: 0.82,
+      timestamp: new Date().toISOString(),
+      metadata: { location: 'Zone C', camera: 'CAM004' },
+      source_modules: ['FireNet']
+    },
+    {
+      id: 'evt8',
+      description: '🔑 Access granted to Supervisor (ID: SUP123)',
+      insight_type: 'access',
+      severity: 'low',
+      confidence_score: 0.99,
+      timestamp: new Date().toISOString(),
+      metadata: { location: 'Warehouse B', camera: 'CAM003' },
+      source_modules: ['ArcFace']
+    }
+    // Add more as needed
+  ];
+
   // Handle tab change
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -158,7 +265,7 @@ const ContextualIntelligencePage = () => {
   };
 
   // Filter insights based on search criteria (client-side filtering as backup)
-  const filteredInsights = insights.list.filter(insight => {
+  const filteredInsights = (insights.list || []).filter(insight => {
     if (searchQuery && !insight.description.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
@@ -187,6 +294,19 @@ const ContextualIntelligencePage = () => {
     }
   };
 
+  // Add a helper to get event type icon/label
+  const getEventTypeIcon = (type) => {
+    switch (type) {
+      case 'safety': return '🔥';
+      case 'security': return '🚫';
+      case 'operation': return '🧑‍🔧';
+      case 'vehicle': return '🚚';
+      case 'anomaly': return '🚨';
+      case 'access': return '🔑';
+      default: return 'ℹ️';
+    }
+  };
+
   // Mock locations for demo (would come from API in production)
   const locationOptions = [
     { value: 'warehouse_a', label: 'Warehouse A' },
@@ -205,6 +325,75 @@ const ContextualIntelligencePage = () => {
     { value: 'safety', label: 'Safety Event' },
     { value: 'access', label: 'Access Event' }
   ];
+
+  // In useEffect, add a timer to simulate live event feed updates
+  useEffect(() => {
+    // For demo, set mock data directly
+    dispatch({ type: 'context/fetchInsights/fulfilled', payload: { list: demoMockInsights, loading: false, error: null } });
+    dispatch({ type: 'context/fetchPredictiveAnalytics/fulfilled', payload: demoMockAnalytics });
+
+    // Simulate live event feed updates
+    const interval = setInterval(() => {
+      // Pick a random event from the pool, update timestamp and id
+      const randomIdx = Math.floor(Math.random() * demoEventPool.length);
+      const newEvent = {
+        ...demoEventPool[randomIdx],
+        id: `evt${Math.floor(Math.random() * 10000)}`,
+        timestamp: new Date().toISOString()
+      };
+      dispatch({
+        type: 'context/fetchInsights/fulfilled',
+        payload: prev => ({
+          ...prev,
+          list: [newEvent, ...prev.list].slice(0, 20), // keep only latest 20
+          loading: false,
+          error: null
+        })
+      });
+    }, 10000); // every 10 seconds
+    return () => clearInterval(interval);
+  }, [dispatch]);
+
+  // Add a simple chatbot for event queries in the Search & Query tab. This will be a floating chat widget or a section at the bottom of the Search & Query tab, with canned responses for demo. The chatbot will respond to user queries about events, e.g., 'Show me all fire events', 'Who entered Warehouse A yesterday?', etc.
+  const demoChatbotResponses = [
+    {
+      question: /fire|burn|smoke/i,
+      answer: 'There was a fire detected near the Loading Dock at 14:32 today. No injuries reported. Event ID: evt1.'
+    },
+    {
+      question: /unauthorized|intruder|entry/i,
+      answer: 'An unauthorized person entered Warehouse A at 14:27. Security was notified. Event ID: evt2.'
+    },
+    {
+      question: /vehicle|truck|ap16ab1234/i,
+      answer: 'Vehicle AP16AB1234 entered Main Gate at 14:15. Event ID: evt4.'
+    },
+    {
+      question: /gunny|bags|stacked/i,
+      answer: 'Gunny bags were stacked in Zone B at 14:00. Event ID: evt5.'
+    },
+    {
+      question: /.*/,
+      answer: 'Sorry, I could not find a relevant event. Please try a different query.'
+    }
+  ];
+
+  // Add chatbot state:
+  const [chatMessages, setChatMessages] = useState([
+    { sender: 'bot', text: 'Hi! Ask me about recent events, e.g., "Show me all fire events".' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+
+  const handleChatSend = () => {
+    if (!chatInput.trim()) return;
+    setChatMessages(msgs => [...msgs, { sender: 'user', text: chatInput }]);
+    // Find canned response
+    const found = demoChatbotResponses.find(r => r.question.test(chatInput));
+    setTimeout(() => {
+      setChatMessages(msgs => [...msgs, { sender: 'bot', text: found.answer }]);
+    }, 800);
+    setChatInput('');
+  };
 
   return (
     <Container maxWidth="xl" className="fade-in">
@@ -524,13 +713,13 @@ const ContextualIntelligencePage = () => {
 
               {insights.loading ? (
                 <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />
-              ) : insights.list.length === 0 ? (
+              ) : (insights.list || []).length === 0 ? (
                 <Alert severity="info">
                   No insights available. Start a video stream and analyze it to generate insights.
                 </Alert>
               ) : (
                 <List>
-                  {insights.list.slice(0, 5).map((insight) => (
+                  {(insights.list || []).slice(0, 5).map((insight) => (
                     <ListItem 
                       key={insight.id} 
                       sx={{ 
@@ -827,7 +1016,7 @@ const ContextualIntelligencePage = () => {
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={9}>
                       <Typography variant="h6" gutterBottom>
-                        {insight.description}
+                        {getEventTypeIcon(insight.insight_type)} {insight.description}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
                         <Chip 
@@ -881,6 +1070,39 @@ const ContextualIntelligencePage = () => {
             </List>
           )}
         </Paper>
+
+        {/* Chatbot section */}
+        <Box sx={{ mt: 4, p: 2, borderRadius: 2, background: 'rgba(245,245,255,0.8)', boxShadow: '0 2px 8px rgba(102,126,234,0.08)' }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+            💬 Event Chatbot (Demo)
+          </Typography>
+          <Box sx={{ maxHeight: 180, overflowY: 'auto', mb: 1 }}>
+            {chatMessages.map((msg, idx) => (
+              <Box key={idx} sx={{ display: 'flex', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', mb: 0.5 }}>
+                <Box sx={{
+                  bgcolor: msg.sender === 'user' ? 'primary.light' : 'grey.200',
+                  color: msg.sender === 'user' ? 'white' : 'text.primary',
+                  px: 2, py: 1, borderRadius: 2, maxWidth: '70%',
+                }}>
+                  {msg.text}
+                </Box>
+              </Box>
+            ))}
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Ask about events..."
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleChatSend(); }}
+            />
+            <Button variant="contained" onClick={handleChatSend} disabled={!chatInput.trim()}>
+              Send
+            </Button>
+          </Box>
+        </Box>
       </TabPanel>
 
       {/* Predictive Analytics tab */}

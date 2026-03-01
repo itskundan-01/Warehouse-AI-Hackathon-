@@ -22,6 +22,8 @@ import {
   LinearProgress,
   Alert,
   AlertTitle,
+  Tab,
+  Tabs
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -36,8 +38,12 @@ import {
   Error as ErrorIcon,
   Info as InfoIcon,
   InsertChart as ChartIcon,
+  Dashboard as DashboardIcon,
+  SmartToy as AIIcon
 } from '@mui/icons-material';
 import Chart from 'react-apexcharts';
+import UnifiedWarehouseDashboard from '../components/UnifiedWarehouseDashboard';
+import ComponentSpecificDashboard from '../components/ComponentSpecificDashboard';
 
 // Mock data for dashboard (in a real app, this would come from Redux/API)
 const mockData = {
@@ -124,6 +130,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
   
   // In a real app, we would fetch data from Redux/API
   useEffect(() => {
@@ -315,70 +322,109 @@ const Dashboard = () => {
         </Box>
       </Box>
 
-      {/* Active Alerts */}
-      {(dashboardData.facialRecognition.alerts.length > 0 || 
-         dashboardData.vehicleRecognition.alerts.length > 0) && (
-        <Box sx={{ mb: 4 }} className="slide-up">
-          <Typography variant="h5" sx={{ 
-            mb: 3, 
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}>
-            <WarningIcon sx={{ color: 'warning.main' }} />
-            Active Alerts
-          </Typography>
-          <Grid container spacing={3}>
-            {dashboardData.facialRecognition.alerts.map(alert => (
-              <Grid item xs={12} md={6} key={`facial-alert-${alert.id}`}>
-                <Alert 
-                  severity={alert.severity}
-                  className="modern-alert"
-                  sx={{ borderRadius: 2 }}
-                  action={
-                    <Button 
-                      color="inherit" 
-                      size="small"
-                      className="modern-button"
-                      onClick={() => navigateToModule('/facial-recognition')}
-                      sx={{ minWidth: 'auto', px: 2 }}
+      {/* Dashboard Tabs */}
+      <Paper sx={{ mb: 3 }}>
+        <Tabs 
+          value={activeTab} 
+          onChange={(e, val) => setActiveTab(val)}
+          aria-label="dashboard tabs"
+          sx={{
+            '& .MuiTab-root': {
+              py: 2,
+              fontSize: '1rem',
+              fontWeight: 600,
+              minHeight: 'auto',
+            }
+          }}
+        >
+          <Tab 
+            icon={<DashboardIcon />} 
+            label="Overview" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
+          <Tab 
+            icon={<AIIcon />} 
+            label="Unified AI System" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
+          <Tab 
+            icon={<ChartIcon />} 
+            label="Component-Specific AI" 
+            iconPosition="start"
+            sx={{ gap: 1 }}
+          />
+        </Tabs>
+      </Paper>
+
+      {/* Tab Content */}
+      {activeTab === 0 && (
+        <Box>
+          {/* Active Alerts */}
+          {(dashboardData.facialRecognition.alerts.length > 0 || 
+             dashboardData.vehicleRecognition.alerts.length > 0) && (
+            <Box sx={{ mb: 4 }} className="slide-up">
+              <Typography variant="h5" sx={{ 
+                mb: 3, 
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}>
+                <WarningIcon sx={{ color: 'warning.main' }} />
+                Active Alerts
+              </Typography>
+              <Grid container spacing={3}>
+                {dashboardData.facialRecognition.alerts.map(alert => (
+                  <Grid item xs={12} md={6} key={`facial-alert-${alert.id}`}>
+                    <Alert 
+                      severity={alert.severity}
+                      className="modern-alert"
+                      sx={{ borderRadius: 2 }}
+                      action={
+                        <Button 
+                          color="inherit" 
+                          size="small"
+                          className="modern-button"
+                          onClick={() => navigateToModule('/facial-recognition')}
+                          sx={{ minWidth: 'auto', px: 2 }}
+                        >
+                          VIEW
+                        </Button>
+                      }
                     >
-                      VIEW
-                    </Button>
-                  }
-                >
-                  <AlertTitle sx={{ fontWeight: 600 }}>Facial Recognition Alert</AlertTitle>
-                  {alert.message} — <strong>{alert.time}</strong>
-                </Alert>
-              </Grid>
-            ))}
-            {dashboardData.vehicleRecognition.alerts.map(alert => (
-              <Grid item xs={12} md={6} key={`vehicle-alert-${alert.id}`}>
-                <Alert 
-                  severity={alert.severity}
-                  className="modern-alert"
-                  sx={{ borderRadius: 2 }}
-                  action={
-                    <Button 
-                      color="inherit" 
-                      size="small"
-                      className="modern-button"
-                      onClick={() => navigateToModule('/vehicle-recognition')}
-                      sx={{ minWidth: 'auto', px: 2 }}
+                      <AlertTitle sx={{ fontWeight: 600 }}>Facial Recognition Alert</AlertTitle>
+                      {alert.message} — <strong>{alert.time}</strong>
+                    </Alert>
+                  </Grid>
+                ))}
+                {dashboardData.vehicleRecognition.alerts.map(alert => (
+                  <Grid item xs={12} md={6} key={`vehicle-alert-${alert.id}`}>
+                    <Alert 
+                      severity={alert.severity}
+                      className="modern-alert"
+                      sx={{ borderRadius: 2 }}
+                      action={
+                        <Button 
+                          color="inherit" 
+                          size="small"
+                          className="modern-button"
+                          onClick={() => navigateToModule('/vehicle-recognition')}
+                          sx={{ minWidth: 'auto', px: 2 }}
+                        >
+                          VIEW
+                        </Button>
+                      }
                     >
-                      VIEW
-                    </Button>
-                  }
-                >
-                  <AlertTitle>Vehicle Recognition Alert</AlertTitle>
-                  {alert.message} — <strong>{alert.time}</strong>
-                </Alert>
+                      <AlertTitle>Vehicle Recognition Alert</AlertTitle>
+                      {alert.message} — <strong>{alert.time}</strong>
+                    </Alert>
+                  </Grid>
+                ))}
               </Grid>
-            ))}
-          </Grid>
-        </Box>
-      )}
+            </Box>
+          )}
       
       {/* Warehouse Overview Card */}
       <Card className="modern-card stat-card" sx={{ mb: 4 }}>
@@ -555,15 +601,6 @@ const Dashboard = () => {
               transition: 'opacity 0.2s'
             }} className="module-action">
               <Button 
-                variant="outlined" 
-                size="small"
-                color="primary"
-                onClick={() => navigateToModule('/facial-recognition/video')}
-                sx={{ fontSize: '0.75rem', px: 2 }}
-              >
-                Upload Video
-              </Button>
-              <Button 
                 variant="text" 
                 color="primary"
                 onClick={() => navigateToModule('/facial-recognition')}
@@ -653,15 +690,6 @@ const Dashboard = () => {
               transition: 'opacity 0.2s'
             }} className="module-action">
               <Button 
-                variant="outlined" 
-                size="small"
-                color="secondary"
-                onClick={() => navigateToModule('/vehicle-recognition/video')}
-                sx={{ fontSize: '0.75rem', px: 2 }}
-              >
-                Upload Video
-              </Button>
-              <Button 
                 variant="text" 
                 color="secondary"
                 onClick={() => navigateToModule('/vehicle-recognition')}
@@ -739,15 +767,6 @@ const Dashboard = () => {
               opacity: 0,
               transition: 'opacity 0.2s'
             }} className="module-action">
-              <Button 
-                variant="outlined" 
-                size="small"
-                color="warning"
-                onClick={() => navigateToModule('/gunny-counter/video')}
-                sx={{ fontSize: '0.75rem', px: 2 }}
-              >
-                Upload Video
-              </Button>
               <Button 
                 variant="text" 
                 color="warning"
@@ -828,15 +847,6 @@ const Dashboard = () => {
               opacity: 0,
               transition: 'opacity 0.2s'
             }} className="module-action">
-              <Button 
-                variant="outlined" 
-                size="small"
-                color="info"
-                onClick={() => navigateToModule('/contextual-intelligence/video')}
-                sx={{ fontSize: '0.75rem', px: 2 }}
-              >
-                Upload Video
-              </Button>
               <Button 
                 variant="text" 
                 color="info"
@@ -1063,6 +1073,22 @@ const Dashboard = () => {
           </Paper>
         </Grid>
       </Grid>
+        </Box>
+      )}
+
+      {/* Unified AI System Tab */}
+      {activeTab === 1 && (
+        <Box>
+          <UnifiedWarehouseDashboard />
+        </Box>
+      )}
+
+      {/* Component-Specific AI Tab */}
+      {activeTab === 2 && (
+        <Box>
+          <ComponentSpecificDashboard />
+        </Box>
+      )}
     </Box>
   );
 };
