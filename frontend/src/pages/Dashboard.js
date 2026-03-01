@@ -42,8 +42,6 @@ import {
   SmartToy as AIIcon
 } from '@mui/icons-material';
 import Chart from 'react-apexcharts';
-import UnifiedWarehouseDashboard from '../components/UnifiedWarehouseDashboard';
-import ComponentSpecificDashboard from '../components/ComponentSpecificDashboard';
 
 // Mock data for dashboard (in a real app, this would come from Redux/API)
 const mockData = {
@@ -1079,14 +1077,24 @@ const Dashboard = () => {
       {/* Unified AI System Tab */}
       {activeTab === 1 && (
         <Box>
-          <UnifiedWarehouseDashboard />
+          <Typography variant="h6" gutterBottom>
+            Unified AI System Overview
+          </Typography>
+          <Alert severity="info">
+            Unified system dashboard coming soon. Individual module dashboards are available in their respective sections.
+          </Alert>
         </Box>
       )}
 
       {/* Component-Specific AI Tab */}
       {activeTab === 2 && (
         <Box>
-          <ComponentSpecificDashboard />
+          <Typography variant="h6" gutterBottom>
+            Component-Specific Analysis
+          </Typography>
+          <Alert severity="info">
+            Navigate to individual module pages (Gunny Counter, Vehicle Recognition, Facial Recognition, Contextual Intelligence) for detailed component analysis.
+          </Alert>
         </Box>
       )}
     </Box>

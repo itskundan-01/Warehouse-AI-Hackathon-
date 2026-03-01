@@ -49,17 +49,17 @@ python main_warehouse_ai.py warehouse_footage.mp4
 python main_warehouse_ai.py truck_photo.jpg
 
 # Process image folder
-python main_warehouse_ai.py /path/to/warehouse/images/
+python backend/plate_detector.py /path/to/warehouse/images/
 ```
 
 ### Testing
 
 ```bash
-# Run comprehensive test suite
-python test_warehouse_ai.py
+# Run test suite with pytest
+pytest test/test_plate_detector.py -v
 
-# Run interactive demo
-python demo_warehouse_ai.py
+# Test plate detection from command line
+python production_plate_detector.py --help
 ```
 
 ---
@@ -97,10 +97,10 @@ Input Sources → FrameManager → LocalProcessor → GeminiAnalyzer → Results
 - **Error Recovery**: Robust exception handling
 
 ### 🎯 Performance Metrics
-- **Processing Rate**: 1-10 FPS (configurable)
-- **Memory Usage**: <2GB per camera stream
-- **API Efficiency**: <100 calls/hour (free tier compatible)
-- **Accuracy Target**: >90% license plate detection
+- **Processing Rate**: Real-time video analysis with frame skipping
+- **Memory Usage**: Optimized for production deployment
+- **Accuracy**: Multi-engine OCR (EasyOCR + Tesseract) for high accuracy
+- **Detection**: YOLOv8 with fallback methods for robustness
 
 ### 📁 Supported Formats
 
@@ -183,12 +183,13 @@ python main_warehouse_ai.py /warehouse/recordings/ --sampling-rate 1
 
 ## 🛠️ Project Files
 
-- **`main_warehouse_ai.py`** - Complete system (500+ lines) ✅
-- **`warehouse_config.py`** - Production configurations ✅  
-- **`test_warehouse_ai.py`** - Comprehensive test suite ✅
-- **`demo_warehouse_ai.py`** - Interactive demonstration ✅
-- **`IMPLEMENTATION.md`** - Development tracking ✅
-- **`README.md`** - This documentation ✅
+**Core System:**
+- **`backend/src/`** - FastAPI backend with detection endpoints ✅
+- **`frontend/src/`** - React frontend with Material-UI ✅  
+- **`backend/plate_detector.py`** - License plate detection module ✅
+- **`test/test_plate_detector.py`** - Comprehensive test suite ✅
+- **`production_plate_detector.py`** - Production-ready detector ✅
+- **Documentation files** - Deployment and setup guides ✅
 
 ---
 
@@ -409,7 +410,6 @@ For any questions, please reach out to the team.
 # Activate environment
 cd "/Users/kundan/PROJECTS/Warehouse AI Hackathon"
 source venv_312/bin/activate
-AIzaSyAQcm4cbtE5ix6wXsgiME99NB4HtNejXig - chaabi
 # Test YOLOv8
 python -c "from ultralytics import YOLO; print('Ready for warehouse AI!')"
 
