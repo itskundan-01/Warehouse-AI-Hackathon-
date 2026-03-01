@@ -1,0 +1,51 @@
+# AP Civil Supply Warehouse AI Vision System
+# Core Dependencies
+
+# Computer Vision
+opencv-python>=4.5.0
+numpy>=1.21.0
+
+# Async Processing
+asyncio>=3.4.3
+
+# Advanced String Processing
+python-Levenshtein>=0.21.0
+
+# HTTP Requests for Gemini API
+requests>=2.28.0
+
+# Image Processing
+Pillow>=8.3.0
+
+# Data Handling
+json>=2.0.9
+
+# Logging and Utilities
+pathlib>=1.0.1
+argparse>=1.4.0
+
+# Optional: For future Gemini API integration
+# websockets>=10.0
+# requests>=2.28.0
+# google-generativeai>=0.3.0
+
+# Development and Testing (Optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# black>=22.0.0
+# flake8>=5.0.0
+
+# Production Deployment (Optional)
+# gunicorn>=20.1.0
+# docker>=6.0.0
+# systemd>=0.17.0
+
+# Database (For Phase 2)
+# psycopg2-binary>=2.9.0
+# sqlite3>=3.38.0
+
+# Web Dashboard (For Phase 2)
+# flask>=2.2.0
+# streamlit>=1.20.0
+# fastapi>=0.95.0
+# uvicorn>=0.20.0

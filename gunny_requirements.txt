@@ -1,0 +1,10 @@
+# Gunny Bag Line Counter - Requirements
+
+## Required packages
+inference-sdk>=0.9.0
+opencv-python>=4.8.0
+numpy>=1.21.0
+argparse
+
+## Installation command:
+# pip install inference-sdk opencv-python numpy
